@@ -91,6 +91,190 @@ def loadMask(filename):
         return SASImage.createMaskMatrix(maskPlotParameters), maskPlotParameters
 
 
+def loadFile(filename, raw_settings, no_processing = False):
+    ''' Loads a file an returns a SAS Measurement Object (SASM) and the full image if the
+        selected file was an Image file
+
+         NB: This is the function used to load any type of file in RAW
+    '''
+    try:
+        file_type = checkFileType(filename)
+        print(file_type)
+    except IOError:
+        raise
+    except Exception:
+        print(str(Exception.__str__), file=sys.stderr)
+        file_type = None
+
+    if file_type == 'image':
+        try:
+            sasm, img = loadImageFile(filename, raw_settings)
+        except (ValueError, AttributeError):
+            print('SASFileIO.loadFile : ' + str(Exception.__str__))
+            raise SASExceptions.UnrecognizedDataFormat('No data could be retrieved from the file, unknown format.')
+
+        if not RAWGlobals.usepyFAI_integration:
+            try:
+                sasm = SASImage.calibrateAndNormalize(sasm, img, raw_settings)
+            except (ValueError, NameError):
+                print(Exception.__str__)
+
+        #Always do some post processing for image files
+        if type(sasm) == list:
+            for current_sasm in sasm:
+
+                current_sasm.setParameter('config_file', raw_settings.get('CurrentCfg'))
+
+                SASM.postProcessSasm(current_sasm, raw_settings)
+
+                if not no_processing:
+                    SASM.postProcessImageSasm(current_sasm, raw_settings)
+        else:
+            sasm.setParameter('config_file', raw_settings.get('CurrentCfg'))
+
+            SASM.postProcessSasm(sasm, raw_settings)
+
+            if not no_processing:
+                SASM.postProcessImageSasm(sasm, raw_settings)
+
+    else:
+        sasm = loadAsciiFile(filename, file_type)
+        img = None
+
+        #If you don't want to post process asci files, return them as a list
+        if type(sasm) != list:
+            SASM.postProcessSasm(sasm, raw_settings)
+
+    if type(sasm) != list and (sasm is None or len(sasm.i) == 0):
+        raise SASExceptions.UnrecognizedDataFormat('No data could be retrieved from the file, unknown format.')
+
+    return sasm, img
+
+
+def loadImageFile(filename, raw_settings):
+
+    img_fmt = raw_settings.get('ImageFormat')
+    hdr_fmt = raw_settings.get('ImageHdrFormat')
+
+    loaded_data, loaded_hdr = loadImage(filename, img_fmt)
+
+    sasm_list = [None for i in range(len(loaded_data))]
+
+    #Pre-load the flatfield file, so it's not loaded every time
+    if raw_settings.get('NormFlatfieldEnabled'):
+        flatfield_filename = raw_settings.get('NormFlatfieldFile')
+        if flatfield_filename != None:
+            flatfield_img, flatfield_img_hdr = loadImage(flatfield_filename, img_fmt)
+            flatfield_hdr = loadHeader(flatfield_filename, flatfield_filename, hdr_fmt)
+            flatfield_img = np.average(flatfield_img, axis=0)
+
+    #Process all loaded images into sasms
+    for i in range(len(loaded_data)):
+        img = loaded_data[i]
+        img_hdr = loaded_hdr[i]
+
+        if len(loaded_data) > 1:
+            temp_filename = os.path.split(filename)[1].split('.')
+            if len(temp_filename) > 1:
+                temp_filename[-2] = temp_filename[-2] + '_%05i' %(i)
+            else:
+                temp_filename[0] = temp_filename[0] + '_%05i' %(i)
+
+            new_filename = '.'.join(temp_filename)
+        else:
+            new_filename = os.path.split(filename)[1]
+
+        hdrfile_info = loadHeader(filename, new_filename, hdr_fmt)
+
+        parameters = {'imageHeader' : img_hdr,
+                      'counters'    : hdrfile_info,
+                      'filename'    : new_filename,
+                      'load_path'   : filename}
+
+        for key in parameters['counters']:
+            if key.lower().find('concentration') > -1 or key.lower().find('mg/ml') > -1:
+                parameters['Conc'] = parameters['counters'][key]
+                break
+
+        x_c = raw_settings.get('Xcenter')
+        y_c = raw_settings.get('Ycenter')
+
+        ## Read center coordinates from header?
+        if raw_settings.get('UseHeaderForCalib'):
+            try:
+                x_y = SASImage.getBindListDataFromHeader(raw_settings, img_hdr, hdrfile_info, keys = ['Beam X Center', 'Beam Y Center'])
+
+                if x_y[0] != None: x_c = x_y[0]
+                if x_y[1] != None: y_c = x_y[1]
+            except ValueError:
+                pass
+            except TypeError:
+                raise SASExceptions.HeaderLoadError('Error loading header, file corrupt?')
+
+        # ********************
+        # If the file is a SAXSLAB file, then get mask parameters from the header and modify the mask
+        # then apply it...
+        #
+        # Mask should be not be changed, but should be created here. If no mask information is found, then
+        # use the user created mask. There should be a force user mask setting.
+        #
+        # ********************
+
+        masks = raw_settings.get('Masks')
+
+        use_hdr_mask = raw_settings.get('UseHeaderForMask')
+
+        if use_hdr_mask and img_fmt == 'SAXSLab300':
+            try:
+                mask_patches = SASImage.createMaskFromHdr(img, img_hdr, flipped = raw_settings.get('DetectorFlipped90'))
+                bs_mask_patches = masks['BeamStopMask'][1]
+
+                if bs_mask_patches != None:
+                    all_mask_patches = mask_patches + bs_mask_patches
+                else:
+                    all_mask_patches = mask_patches
+
+                bs_mask = SASImage.createMaskMatrix(img.shape, all_mask_patches)
+            except KeyError:
+                raise SASExceptions.HeaderMaskLoadError('bsmask_configuration not found in header.')
+
+            dc_mask = masks['ReadOutNoiseMask'][0]
+        else:
+            bs_mask = masks['BeamStopMask'][0]
+            dc_mask = masks['ReadOutNoiseMask'][0]
+
+
+        tbs_mask = masks['TransparentBSMask'][0]
+
+        # ********* WARNING WARNING WARNING ****************#
+        # Hmm.. axes start from the lower left, but array coords starts
+        # from upper left:
+        #####################################################
+        y_c = img.shape[0]-y_c
+
+        if not RAWGlobals.usepyFAI_integration:
+            # print('Using standard RAW integration')
+            ## Flatfield correction.. this part gets moved to a image correction function later
+            if raw_settings.get('NormFlatfieldEnabled'):
+                if flatfield_filename != None:
+                    img, img_hdr = SASImage.doFlatfieldCorrection(img, img_hdr, flatfield_img, flatfield_hdr)
+                else:
+                    pass #Raise some error
+
+            dezingering = raw_settings.get('ZingerRemovalRadAvg')
+            dezing_sensitivity = raw_settings.get('ZingerRemovalRadAvgStd')
+
+            sasm = createSASMFromImage(img, parameters, x_c, y_c, bs_mask, dc_mask, tbs_mask, dezingering, dezing_sensitivity)
+
+        else:
+            sasm = SASImage.pyFAIIntegrateCalibrateNormalize(img, parameters, x_c, y_c, raw_settings, bs_mask, tbs_mask)
+
+        sasm_list[i] = sasm
+
+
+    return sasm_list, loaded_data
+
+
 def loadOutFile(filename):
 
     five_col_fit = re.compile('\s*\d*[.]\d*[+eE-]*\d+\s+-?\d*[.]\d*[+eE-]*\d+\s+\d*[.]\d*[+eE-]*\d+\s+\d*[.]\d*[+eE-]*\d+\s+\d*[.]\d*[+eE-]*\d+\s*$')
