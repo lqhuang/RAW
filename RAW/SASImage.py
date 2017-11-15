@@ -271,6 +271,262 @@ class PolygonMask(Mask):
         return coords
 
 
+def calcExpression(expr, img_hdr, file_hdr):
+
+        if expr != '':
+            mathparser = SASParser.PyMathParser()
+            mathparser.addDefaultFunctions()
+            mathparser.addDefaultVariables()
+            mathparser.addSpecialVariables(file_hdr)
+            mathparser.addSpecialVariables(img_hdr)
+            mathparser.expression = expr
+
+            val = mathparser.evaluate()
+            return val
+        else:
+            return None
+
+
+def getBindListDataFromHeader(raw_settings, img_hdr, file_hdr, keys):
+
+    bind_list = raw_settings.get('HeaderBindList')
+
+    result = []
+
+    for each_key in keys:
+        if bind_list[each_key][1] != None:
+            data = bind_list[each_key][1]
+            hdr_choice = data[1]
+            key = data[0]
+            if hdr_choice == 'imghdr': hdr = img_hdr
+            else: hdr = file_hdr
+
+            if key in hdr:
+                try:
+                    val = float(hdr[key])
+
+                except ValueError:
+                    sys.stderr.write('\n** ' + each_key + ' bound to header value "' + str(key) + ': ' + str(hdr[key]) + '" could not be converted to a float! **\n')
+                    result.append(None)
+                    continue
+
+                try:
+                    # Calculate value with modifier
+                    if bind_list[each_key][2] != '':
+                        expr = bind_list[each_key][2]
+
+                        val = calcExpression(expr, img_hdr, file_hdr)
+                        result.append(val)
+                    else:
+                        result.append(val)
+                except ValueError:
+                    sys.stderr.write('\n** Expression: ' + expr + ' does not give a valid result when calculating ' +str(each_key)+' **\n')
+                    result.append(None)
+            else:
+                result.append(None)
+        else:
+            result.append(None)
+
+    return result
+
+
+def calibrateAndNormalize(sasm_list, img_list, raw_settings):
+    # Calibrate Q
+    sd_distance = raw_settings.get('SampleDistance')
+    pixel_size = raw_settings.get('DetectorPixelSize')
+    wavelength = raw_settings.get('WaveLength')
+    bin_size = raw_settings.get('Binsize')
+    calibrate_check = raw_settings.get('CalibrateMan')
+    enable_normalization = raw_settings.get('EnableNormalization')
+
+    pixel_size = pixel_size / 1000
+
+    if type(sasm_list) != list:
+        sasm_list = [sasm_list]
+        img_list = [img_list]
+
+    for i in range(len(sasm_list)):
+        sasm = sasm_list[i]
+        img = img_list[i]
+
+        if raw_settings.get('UseHeaderForCalib'):
+            img_hdr = sasm.getParameter('imageHeader')
+            file_hdr = sasm.getParameter('counters')
+
+            result = getBindListDataFromHeader(raw_settings, img_hdr, file_hdr, keys = ['Sample Detector Distance', 'Detector Pixel Size', 'Wavelength'])
+            if result[0] != None: sd_distance = result[0]
+            if result[1] != None: pixel_size = result[1]
+            if result[2] != None: wavelength = result[2]
+
+        if raw_settings.get('DoSolidAngleCorrection'):
+            sc = SASCalib.calcSolidAngleCorrection(sasm, sd_distance, pixel_size)
+
+            sasm.scaleRawIntensity(1.0/sc)
+
+        sasm.setBinning(bin_size)
+
+        if calibrate_check:
+            sasm.calibrateQ(sd_distance, pixel_size, wavelength)
+
+        normlist = raw_settings.get('NormalizationList')
+        img_hdr = sasm.getParameter('imageHeader')
+        file_hdr = sasm.getParameter('counters')
+
+        if normlist != None and enable_normalization == True:
+            sasm.setParameter('normalizations', {'Counter_norms':raw_settings.get('NormalizationList')})
+
+            if raw_settings.get('DoSolidAngleCorrection'):
+
+                norm_parameter = sasm.getParameter('normalizations')
+
+                norm_parameter['Solid_Angle_Correction'] = 'On'
+
+                sasm.setParameter('normalizations', norm_parameter)
+
+            for each in normlist:
+                op, expr = each
+
+                #try:
+                val = calcExpression(expr, img_hdr, file_hdr)
+
+                if val != None:
+                    val = float(val)
+                else:
+                    raise ValueError
+                #except:
+                #    msg = 'calcExpression error'
+                #    raise SASExceptions.NormalizationError('Error normalizing in calibrateAndNormalize: ' + str(msg))
+
+                if op == '/':
+
+                   # if val == 0:
+                   #     raise ValueError('Divide by Zero when normalizing')
+
+                    if val != 0:
+                        sasm.scaleBinnedIntensity(1/val)
+                    else:
+                        print 'WARNING: Divide by zero when normalizing, normalization value ignore!'
+
+                elif op == '+':
+                    sasm.offsetBinnedIntensity(val)
+                elif op == '*':
+
+                    # if val == 0:
+                    #    raise ValueError('Multiply by Zero when normalizing')
+                    if val != 0:
+                        sasm.scaleBinnedIntensity(val)
+                        print 'WARNING: Multiply by zero when normalizing, normalization value ignored!'
+
+                elif op == '-':
+                    sasm.offsetBinnedIntensity(-val)
+        else:
+            sasm.setParameter('normalizations', {})
+
+            if raw_settings.get('DoSolidAngleCorrection'):
+
+                norm_parameter = sasm.getParameter('normalizations')
+
+                norm_parameter['Solid_Angle_Correction'] = 'On'
+
+                sasm.setParameter('normalizations', norm_parameter)
+
+    return sasm_list
+
+
+def finetuneAgbePoints(img, x_c, y_c, x1, y1, r):
+        points, xpoints, ypoints = calcBresenhamLinePoints(x_c, y_c, x1, y1)
+
+        try:
+            line = img[ypoints, xpoints]
+        except IndexError:
+            return False
+
+        #Cut a
+        cutlen = int(len(line)/2)
+        line2 = line[cutlen:]
+
+        img_panel = wx.FindWindowByName('ImagePanel')
+        img_panel.addLine(xpoints[cutlen:], ypoints[cutlen:], 'green')
+
+        idx = line2.argmax()        #index of max value in the array
+
+        limit_percent = 0.2
+        limitidx = int((limit_percent*r)/2)
+
+        gaussx = xpoints[cutlen + idx - limitidx : cutlen + idx + limitidx]
+        gaussy = ypoints[cutlen + idx - limitidx : cutlen + idx + limitidx]
+
+        gaussline = img[gaussy, gaussx]
+
+        #print gaussy, gaussx
+        img_panel = wx.FindWindowByName('ImagePanel')
+        img_panel.addLine(gaussx, gaussy)
+
+        fitfunc = lambda p, x: p[0] * np.exp(-(x-p[1])**2/(2.0*p[2]**2))
+
+        # Cauchy
+        #fitfunc = lambda p, x: p[0] * (1/(1+((x-p[1])/p[2])**2 ))
+        errfunc = lambda p, x, y: fitfunc(p,x)-y
+
+        # guess some fit parameters
+        p0 = [max(gaussline), np.mean(range(0,len(gaussline))), np.std(range(0,len(gaussline)))]
+        x = range(0, len(gaussline))
+
+        # guess for cauchy distribution
+        #p0 = [max(gaussline), median(x), 1/(max(gaussline)*pi)]
+
+        # fit a gaussian
+        p1, success = optimize.leastsq(errfunc, p0, args=(x, gaussline))
+
+        idx = idx + cutlen - limitidx + (int(p1[1]))
+
+        try:
+            return (xpoints[idx] + (p1[1] % 1), ypoints[idx]+ (p1[1] % 1))
+        except IndexError:
+            return False
+
+def calcAgBeSampleDetectorDist(agbe_dist, wavelength_in_A, pixel_size_in_mm):
+    ''' Calculates the distance between sample and detector based on
+     the distance to the 1st circle in the AgBe measurement in pixels
+
+     Input:
+     agbeDist = Distance to 1st circle in AgBe measurement in pixels
+     wavelength = lambda in q formula
+
+     q = ( 4 * pi * sin(theta)) / lambda
+
+     tan(theta) = opposite / adjacent
+
+     Ouput:
+     SD_Distance = Sample Detector Distance
+    '''
+
+    q = 0.107625  # Q for 1st cirle in AgBe
+
+    sin_theta = (q * wavelength_in_A) / (4 * np.pi)
+
+    theta = np.arcsin(sin_theta)
+
+    opposite = agbe_dist * pixel_size_in_mm
+    adjacent = opposite / np.tan(2*theta)
+
+    SD_Distance = adjacent
+
+    return SD_Distance
+
+def calcFromSDToAgBePixels(sd_distance, wavelength_in_A, pixel_size_in_mm):
+
+    q = 0.107625  # Q for 1st cirle in AgBe
+
+    sin_theta = (q * wavelength_in_A) / (4 * np.pi)
+
+    theta = np.arcsin(sin_theta)
+
+    adjacent = sd_distance
+    opposite = np.tan(2*theta) * adjacent
+    agbe_dist = opposite / pixel_size_in_mm
+
+    return agbe_dist
 
 def calcCenterCoords(img, selected_points, tune = True):
         ''' Determine center from coordinates on circle peferie.
@@ -339,6 +595,87 @@ def calcCenterCoords(img, selected_points, tune = True):
 
         return ( (x_c, y_c), r )
 
+def calcBresenhamLinePoints(x0, y0, x1, y1):
+
+    pointList = []
+    pointXList = []
+    pointYList = []
+
+    Dx = x1 - x0;
+    Dy = y1 - y0;
+
+    #Steep
+    steep = abs(Dy) > abs(Dx)
+    if steep:
+        x0, y0 = y0, x0
+        x1, y1 = y1, x1
+
+        Dx = x1 - x0
+        Dy = y1 - y0
+
+    if Dx < 0:
+        Dx = -Dx
+
+        xrange = range(x1, x0+1)
+        xrange.reverse()
+    else:
+        xrange = range(x0,x1+1)
+
+    ystep = 1
+
+    if Dy < 0:
+       ystep = -1
+       Dy = -Dy
+
+    TwoDy = 2*Dy
+    TwoDyTwoDx = TwoDy - 2*Dx        # 2*Dy - 2*Dx
+    E = TwoDy - Dx                   # //2*Dy - Dx
+    y = y0
+
+    for x in xrange:     #int x = x0; x != x1; x += xstep)
+
+       if steep:
+           xDraw = y
+           yDraw = x
+       else:
+           xDraw = x
+           yDraw = y
+
+       #plot(xDraw, yDraw)
+       pointList.append((xDraw,yDraw))
+       pointXList.append(xDraw)
+       pointYList.append(yDraw)
+
+       if E > 0:
+           E = E + TwoDyTwoDx             #//E += 2*Dy - 2*Dx;
+           y = y + ystep
+       else:
+           E = E + TwoDy                 #//E += 2*Dy;
+
+    return pointList, pointXList, pointYList
+
+def calcBresenhamCirclePoints(radius, xOffset = 0, yOffset = 0):
+    ''' Uses the Bresenham circle algorithm for determining the points
+     of a circle with a certain radius '''
+
+    x = 0
+    y = radius
+
+    switch = 3 - (2 * radius)
+    points = []
+    while x <= y:
+        points.extend([(x + xOffset, y + yOffset),(x + xOffset,-y + yOffset),
+                       (-x + xOffset, y + yOffset),(-x + xOffset,-y + yOffset),
+                       (y + xOffset, x + yOffset),(y + xOffset,-x + yOffset),
+                       (-y + xOffset, x + yOffset),(-y + xOffset, -x + yOffset)])
+        if switch < 0:
+            switch = switch + (4 * x) + 6
+        else:
+            switch = switch + (4 * (x - y)) + 10
+            y = y - 1
+        x = x + 1
+
+    return points
 
 def createMaskMatrix(img_dim, masks):
     ''' creates a 2D binary matrix of the same size as the image,
@@ -383,7 +720,6 @@ def createMaskMatrix(img_dim, masks):
     mask = np.flipud(mask)
 
     return mask
-
 
 def createMaskFromHdr(img, img_hdr, flipped = False):
 
@@ -447,6 +783,99 @@ def createMaskFromHdr(img, img_hdr, flipped = False):
 
     return masks
 
+def applyMaskToImage(in_image, mask):
+    ''' multiplies the mask matrix to a 2D array (image) to reveal
+    the an image where the mask has been applied. '''
+    pass
+
+
+def doFlatfieldCorrection(img, img_hdr, flatfield_img, flatfield_hdr):
+    if type(flatfield_img) == list:
+        flatfield_img = np.average(flatfield_img, axis=0)
+
+    cor_img = img / flatfield_img   #flat field is often water.
+
+    return cor_img
+
+def doDarkBackgroundCorrection(img, img_hdr, dark_img, dark_hdr):
+    pass
+
+def removeZingers(intensityArray, startIdx = 0, averagingWindowLength = 10, stds = 4):
+    ''' Removes spikes from the radial averaged data
+        Threshold is currently 4 times the standard deviation
+
+        averagingWindowLength :     The number of points before the spike
+                                    that are averaged and used to replace the spike.
+
+        startIdx :                  Index in intensityArray to start the search for spikes
+
+    '''
+
+    for i in range(averagingWindowLength + startIdx, len(intensityArray)):
+
+        averagingWindow = intensityArray[i - averagingWindowLength : i - 1]
+
+        stdOfAveragingWindow = np.std(averagingWindow)
+        meanOfAvergingWindow = np.mean(averagingWindow)
+
+        threshold = meanOfAvergingWindow + (stds * stdOfAveragingWindow)
+
+        if intensityArray[i] > threshold:
+            intensityArray[i] = meanOfAvergingWindow
+
+    return intensityArray
+
+def removeZingers2(intensity_array, start_idx = 0, window_length = 10, sensitivity = 4):
+    ''' Removes spikes from the radial averaged data
+        Threshold is currently 4 times the standard deviation
+
+        averagingWindowLength :     The number of points before the spike
+                                    that are averaged and used to replace the spike.
+
+        startIdx :                  Index in intensityArray to start the search for spikes
+
+    '''
+
+    half_window = int(np.ceil(window_length/2))
+
+    for i in range(0, len(intensity_array)):
+
+
+        if i >= (half_window + start_idx) and i < (len(intensity_array)-half_window):
+            window = intensity_array[i - half_window  : i + half_window]
+        elif i >= (len(intensity_array)-half_window):
+            window = intensity_array[i - window_length  : i]
+
+        if i >= half_window + start_idx:
+            stdwin = np.sort(window)
+            std = np.std(stdwin[:-half_window])
+            median = np.median(window)
+
+            plus_threshold = median + (std * sensitivity)
+            minus_threshold = median - (std * sensitivity)
+
+            if intensity_array[i] > plus_threshold or intensity_array[i] < minus_threshold:
+                intensity_array[i] = median
+
+    return intensity_array
+
+def getIntensityFromQmatrix(qmatrix):
+
+    qmatrix = np.flipud(qmatrix)
+    qmatrix = np.flipud(np.rot90(qmatrix,3))
+
+    #I = np.zeros(qmatrix.shape[1])
+    I2 = np.zeros(qmatrix.shape[1])
+    err = np.zeros(qmatrix.shape[1])
+
+    for i in range(0, qmatrix.shape[1]):
+        y = qmatrix[np.where(qmatrix[:,i]!=0),i][0]
+        #y2 = SASImage.removeZingers2(copy.copy(y), 0, 20, 4)
+        #I[i] = np.mean(y2)
+        I2[i] = np.mean(y)
+        err[i] = np.std(y) / np.sqrt(len(y))
+
+    return I2, err
 
 def radialAverage(in_image, x_cin, y_cin, mask = None, readoutNoise_mask = None, dezingering = 0, dezing_sensitivity = 4.0):
     ''' Radial averaging. and calculation of readout noise from a readout noise mask.
@@ -598,6 +1027,154 @@ def radialAverage(in_image, x_cin, y_cin, mask = None, readoutNoise_mask = None,
     return [iq, q, errorbars, qmatrix]
 
 
+def pyFAIIntegrateCalibrateNormalize(img, parameters, x_cin, y_cin, raw_settings, mask = None, tbs_mask = None):
+    print 'using pyfai!!!!'
+    # Get appropriate settings
+    sd_distance = raw_settings.get('SampleDistance')
+    pixel_size = raw_settings.get('DetectorPixelSize')
+    wavelength = raw_settings.get('WaveLength')
+    bin_size = raw_settings.get('Binsize')
+    normlist = raw_settings.get('NormalizationList')
+
+    do_calibration = raw_settings.get('CalibrateMan')
+    do_normalization = raw_settings.get('EnableNormalization')
+    do_flatfield = raw_settings.get('NormFlatfieldEnabled')
+    do_solidangle = raw_settings.get('DoSolidAngleCorrection')
+    do_useheaderforcalib = raw_settings.get('UseHeaderForCalib')
+
+    #Put everything in appropriate units
+    pixel_size = pixel_size *1e-6 #convert pixel size to m
+    wavelength = wavelength*1e-10 #convert wl to m
+
+    if do_useheaderforcalib:
+        img_hdr = parameters['imageHeader']
+        file_hdr = parameters['counters']
+
+        result = getBindListDataFromHeader(raw_settings, img_hdr, file_hdr, keys = ['Sample Detector Distance', 'Detector Pixel Size', 'Wavelength'])
+        if result[0] != None: sd_distance = result[0]
+        if result[1] != None: pixel_size = result[1]
+        if result[2] != None: wavelength = result[2]
+
+    #Set up mask
+    img = np.float64(img)
+
+    ylen, xlen = img.shape
+
+    xlen = int(xlen)
+    ylen = int(ylen)
+
+    # If no mask is given, the mask is pure zeroes
+    if mask is None:
+        mask = np.zeroes(img.shape)
+
+    else:
+        mask = np.logical_not(mask)
+
+    # if readoutNoise_mask == None:
+    #     readoutNoiseFound = 0
+    #     readoutNoise_mask = np.zeros(img.shape, dtype = np.float64)
+    # else:
+    #     readoutNoiseFound = 1
+
+    # readoutN = np.zeros((1,4), dtype = np.float64)
+
+    # Find the maximum distance to the edge in the image:
+    maxlen1 = int(max(xlen - x_cin, ylen - y_cin, xlen - (xlen - x_cin), ylen - (ylen - y_cin)))
+
+    diag1 = int(np.sqrt((xlen-x_cin)**2 + y_cin**2))
+    diag2 = int(np.sqrt((x_cin**2 + y_cin**2)))
+    diag3 = int(np.sqrt((x_cin**2 + (ylen-y_cin)**2)))
+    diag4 = int(np.sqrt((xlen-x_cin)**2 + (ylen-y_cin)**2))
+
+    maxlen = int(max(diag1, diag2, diag3, diag4, maxlen1))
+
+    x_c = float(x_cin)
+    y_c = float(y_cin)
+
+    ai = pyFAI.AzimuthalIntegrator()
+
+    if do_calibration:
+        ai.wavelength = wavelength
+        ai.pixel1 = pixel_size
+        ai.pixel2 = pixel_size
+        ai.setFit2D(sd_distance, x_c, y_c)
+
+    if do_flatfield:
+        flatfield_filename = raw_settings.get('NormFlatfieldFile')
+        ai.set_flatfiles(flatfield_filename)
+
+    print ai
+    qmin_theta = SASCalib.calcTheta(sd_distance*1e-3, pixel_size, 0)
+    qmin = ((4 * math.pi * math.sin(qmin_theta)) / (wavelength*1e10))
+
+    qmax_theta = SASCalib.calcTheta(sd_distance*1e-3, pixel_size, maxlen)
+    qmax = ((4 * math.pi * math.sin(qmax_theta)) / (wavelength*1e10))
+
+    q_range = (qmin, qmax)
+
+    #Carry out the integration
+    q, iq, errorbars = ai.integrate1d(img, maxlen, mask = mask, correctSolidAngle = do_solidangle, error_model = 'poisson', unit = 'q_A^-1', radial_range = q_range, method = 'nosplit_csr')
+
+    i_raw = iq[:-5]        #Last points are usually garbage they're very few pixels
+                        #Cutting the last 5 points here.
+    q_raw = q[0:len(i_raw)]
+    errorbars = errorbars[0:len(i_raw)]
+
+    err_raw_non_nan = np.nan_to_num(errorbars)
+
+    if tbs_mask is not None:
+        roi_counter = img[tbs_mask==1].sum()
+        parameters['counters']['roi_counter'] = roi_counter
+
+    parameters['normalizations'] = {}
+    if do_solidangle:
+        parameters['normalizations']['Solid_Angle_Correction'] = 'On'
+
+    sasm = SASM.SASM(i_raw, q_raw, err_raw_non_nan, parameters)
+
+    img_hdr = sasm.getParameter('imageHeader')
+    file_hdr = sasm.getParameter('counters')
+
+    if normlist != None and do_normalization == True:
+        sasm.setParameter('normalizations', {'Counter_norms' : normlist})
+
+        for each in normlist:
+            op, expr = each
+
+            #try:
+            val = calcExpression(expr, img_hdr, file_hdr)
+
+            if val != None:
+                val = float(val)
+            else:
+                raise ValueError
+            #except:
+            #    msg = 'calcExpression error'
+            #    raise SASExceptions.NormalizationError('Error normalizing in calibrateAndNormalize: ' + str(msg))
+
+            if op == '/':
+
+               if val == 0:
+                   raise ValueError('Divide by Zero when normalizing')
+
+               sasm.scaleBinnedIntensity(1/val)
+
+            elif op == '+':
+                sasm.offsetBinnedIntensity(val)
+            elif op == '*':
+
+                if val == 0:
+                   raise ValueError('Multiply by Zero when normalizing')
+
+                sasm.scaleBinnedIntensity(val)
+
+            elif op == '-':
+                sasm.offsetBinnedIntensity(-val)
+
+    return sasm
+
+
+
 def ravg_python(readoutNoiseFound, readoutN, readoutNoise_mask, xlen, ylen, x_c,
                 y_c, hist, low_q, high_q, in_image, hist_count, mask, qmatrix,
                 dezingering, dezing_sensitivity):
@@ -745,3 +1322,132 @@ def ravg_python(readoutNoiseFound, readoutN, readoutNoise_mask, xlen, ylen, x_c,
     # """
 
     # code2 = """
+
+# def getStd(window_ptr, win_len):
+# # {
+#     # int half_win_len;
+#     # double mean, variance, M2, n, delta;
+
+#     M2 = 0.;
+#     n = 0.0;
+#     mean = 0.;
+#     variance = 1.;
+#     delta = 0.;
+
+#     half_win_len = int(win_len / 2)
+
+#     while(half_win_len--)
+#     {
+#         ++n;
+#         delta = ((double) *window_ptr) - mean;
+#         mean = mean + (delta/n);
+
+#         M2 = M2 + (delta * (((double) *window_ptr) - mean));
+
+#         ++window_ptr;
+#     }
+
+#     if(n > 1)
+#             variance = M2/(n - 1);     /* To avoid devide by zero */
+
+#     return sqrt(variance);
+# }
+
+# def moveDataToWindow(double *window_ptr, double *data, int win_len)
+# # {
+#     data++;                                        /* Pointers needs to be moved back/forward since */
+#     window_ptr--;                                  /* *data++ doesn't work, but *++data does.. strange! */
+
+#     while(win_len--)
+#     {
+#         *++window_ptr = *--data;                  /* Move values from data array to the window array */
+#     }
+
+# # }
+
+# void swap(double *x, double *y)
+# {
+#    long temp;
+#    temp = *x;
+#    *x = *y;
+#    *y = temp;
+# }
+
+# long choose_pivot(long i, long j)
+# {
+#    return((i+j) /2);
+# }
+
+# void quicksort(double list[], long m, long n)
+# {
+#    long key,i,j,k;
+#    if( m < n)
+#    {
+#       k = choose_pivot(m, n);
+#       swap(&list[m], &list[k]);
+#       key = list[m];
+#       i = m+1;
+#       j = n;
+
+#       while(i <= j)
+#       {
+#          while((i <= n) && (list[i] <= key))
+#             i++;
+#          while((j >= m) && (list[j] > key))
+#             j--;
+#          if( i < j)
+#             swap(&list[i], &list[j]);
+#         }
+
+#       // swap two elements
+#       swap(&list[m], &list[j]);
+
+#       // recursively sort the lesser list
+#       quicksort(list, m, j-1);
+#       quicksort(list, j+1, n);
+#    }
+# }
+
+# """
+#
+#    stdwin = np.sort(window)
+#    std = np.std(stdwin[:-half_window])
+#    median = np.median(window)
+#
+#    plus_threshold = median + (std * sensitivity)
+#    minus_threshold = median - (std * sensitivity)
+#
+#    if intensity_array[i] > plus_threshold or intensity_array[i] < minus_threshold:
+#        intensity_array[i] = median
+
+
+    # ravg = ext_tools.ext_function('ravg', code,
+    #                               ['readoutNoiseFound', 'readoutN',
+    #                                'readoutNoise_mask', 'xlen',
+    #                                'ylen','x_c','y_c', 'hist',
+    #                                'low_q', 'high_q', 'in_image',
+    #                                'hist_count', 'mask', 'qmatrix',
+    #                                'dezingering', 'dezing_sensitivity'],
+    #                                type_converters = converters.blitz)
+
+    # ravg.customize.add_support_code(code2)
+
+    # mod.add_function(ravg)
+
+    # #SYSTEM TEMP DIR MIGHT NOT HAVE WRITE PERMISSION OR HAS SPACES IN IT => FAIL!
+    # #EXTREMELY ANNOYING THAT THE TEMP DIR CAN'T BE SET FROM mod.compile()! .. This is a work around:
+
+    # kw, file = mod.build_kw_and_file('.', {})
+
+    # success = build_tools.build_extension(file, temp_dir = temp_dir,
+    #                                           compiler_name = 'gcc',
+    #                                           verbose = 0, **kw)
+
+    # if success:
+    #     print '\n\n****** ravg_ext module compiled succesfully! *********'
+
+
+
+
+
+

@@ -595,6 +595,147 @@ def average(sasm_list, forced = False):
 
     return avgSASM
 
+def weightedAverage(sasm_list, weightByError, weightCounter, forced = False):
+    ''' Weighted average of the intensity of a list of sasm objects '''
+    #Check average is possible with provided curves:
+    first_sasm = sasm_list[0]
+    first_q_min, first_q_max = first_sasm.getQrange()
+
+    for each in sasm_list:
+        each_q_min, each_q_max = each.getQrange()
+        if not np.all(np.round(each.q[each_q_min:each_q_max], 5) == np.round(first_sasm.q[first_q_min:first_q_max], 5)) and not forced:
+            raise SASExceptions.DataNotCompatible('Average list contains data sets with different q vectors.')
+
+    all_i = first_sasm.i[first_q_min : first_q_max]
+    all_err = first_sasm.err[first_q_min : first_q_max]
+
+    if not weightByError:
+        if first_sasm.getAllParameters().has_key('counters'):
+            file_hdr = first_sasm.getParameter('counters')
+        if first_sasm.getAllParameters().has_key('imageHeader'):
+            img_hdr = first_sasm.getParameter('imageHeader')
+
+        if weightCounter in file_hdr:
+            all_weight = float(file_hdr[weightCounter])
+        else:
+            all_weight = float(img_hdr[weightCounter])
+
+    avg_filelist = []
+    if not weightByError:
+        avg_filelist.append([first_sasm.getParameter('filename'), all_weight])
+    else:
+        avg_filelist.append([first_sasm.getParameter('filename'), 'error'])
+
+    for idx in range(1, len(sasm_list)):
+        each_q_min, each_q_max = sasm_list[idx].getQrange()
+        all_i = np.vstack((all_i, sasm_list[idx].i[each_q_min:each_q_max]))
+        all_err = np.vstack((all_err, sasm_list[idx].err[each_q_min:each_q_max]))
+
+        if not weightByError:
+            if sasm_list[idx].getAllParameters().has_key('counters'):
+                file_hdr = sasm_list[idx].getParameter('counters')
+            if sasm_list[idx].getAllParameters().has_key('imageHeader'):
+                img_hdr = sasm_list[idx].getParameter('imageHeader')
+
+            if weightCounter in file_hdr:
+                try:
+                    all_weight = np.vstack((all_weight, float(file_hdr[weightCounter])))
+                except ValueError:
+                    raise SASExceptions.DataNotCompatible('Not all weight counter values were numbers.')
+
+            else:
+                try:
+                    all_weight = np.vstack((all_weight, float(img_hdr[weightCounter])))
+                except ValueError:
+                    raise SASExceptions.DataNotCompatible('Not all weight counter values were numbers.')
+
+        if not weightByError:
+            avg_filelist.append([sasm_list[idx].getParameter('filename'), all_weight])
+        else:
+            avg_filelist.append([sasm_list[idx].getParameter('filename'), 'error'])
+
+    if not weightByError:
+        weight = all_weight.flatten()
+        avg_i = np.average(all_i, axis=0, weights=weight)
+        avg_err = np.sqrt(np.average(np.square(all_err), axis=0, weights=np.square(weight)))
+    else:
+        all_err = 1/(np.square(all_err))
+        avg_i = np.average(all_i, axis=0, weights = all_err)
+        avg_err = np.sqrt(1/np.sum(all_err,0))
+
+    avg_i = copy.deepcopy(avg_i)
+    avg_err = copy.deepcopy(avg_err)
+
+    avg_q = copy.deepcopy(first_sasm.q)[first_q_min:first_q_max]
+    avg_parameters = copy.deepcopy(sasm_list[0].getAllParameters())
+
+    avgSASM = SASM(avg_i, avg_q, avg_err, avg_parameters)
+    history = avgSASM.getParameter('history')
+
+    history = {}
+
+    history_list = []
+
+    for eachsasm in sasm_list:
+        each_history = []
+        each_history.append(copy.deepcopy(eachsasm.getParameter('filename')))
+
+        for key in eachsasm.getParameter('history'):
+            each_history.append({key : copy.deepcopy(eachsasm.getParameter('history')[key])})
+
+        history_list.append(each_history)
+
+
+    history['weighted_averaged_files'] = history_list
+    avgSASM.setParameter('history', history)
+
+    return avgSASM
+
+def calcAbsoluteScaleWaterConst(water_sasm, emptycell_sasm, I0_water, raw_settings):
+
+    if emptycell_sasm == None or emptycell_sasm == 'None' or water_sasm == 'None' or water_sasm == None:
+        raise SASExceptions.AbsScaleNormFailed('Empty cell file or water file was not found. Open options to set these files.')
+
+    water_bgsub_sasm = subtract(water_sasm, emptycell_sasm)
+
+    water_avg_end_idx = int( len(water_bgsub_sasm.i) * 0.666 )
+    water_avg_start_idx = int( len(water_bgsub_sasm.i) * 0.333 )
+
+    avg_water = np.mean(water_bgsub_sasm.i[water_avg_start_idx : water_avg_end_idx])
+
+    abs_scale_constant = I0_water / avg_water
+
+    return abs_scale_constant
+
+def normalizeAbsoluteScaleWater(sasm, raw_settings):
+    abs_scale_constant = raw_settings.get('NormAbsWaterConst')
+    sasm.scaleBinnedIntensity(abs_scale_constant)
+
+    norm_parameter = sasm.getParameter('normalizations')
+
+    norm_parameter['Absolute_scale_factor'] = abs_scale_constant
+
+    sasm.setParameter('normalizations', norm_parameter)
+
+    return sasm, abs_scale_constant
+
+def postProcessImageSasm(sasm, raw_settings):
+
+    if raw_settings.get('NormAbsWater'):
+        try:
+            normalizeAbsoluteScaleWater(sasm, raw_settings)
+        except SASExceptions.AbsScaleNormFailed, e:
+            print e
+
+def postProcessSasm(sasm, raw_settings):
+
+    if raw_settings.get('ZingerRemoval'):
+        std = raw_settings.get('ZingerRemoveSTD')
+        winlen = raw_settings.get('ZingerRemoveWinLen')
+        start_idx = raw_settings.get('ZingerRemoveIdx')
+
+        sasm.removeZingers(start_idx, winlen, std)
+
 def superimpose(sasm_star, sasm_list):
     """
     Find the scale factors for a protein buffer pair that will best match a known standard curve.
@@ -832,3 +973,144 @@ def interpolateToFit(sasm_star, sasm):
     newSASM.setParameter('history', history)
 
     return newSASM
+
+def logBinning(sasm, no_points):
+
+    # if end_idx == -1:
+    #     end_idx = len(self._i_raw)
+
+    i_roi = sasm._i_binned
+    q_roi = sasm._q_binned
+    err_roi = sasm._err_binned
+
+    bins = np.logspace(1, np.log10(len(q_roi)), no_points)
+
+    binned_q = []
+    binned_i = []
+    binned_err = []
+
+    idx = 0
+    for i in range(0, len(bins)):
+        no_of_bins = int(np.floor(bins[i] - bins[i-1]))
+
+        if no_of_bins > 1:
+            mean_q = np.mean( q_roi[ idx : idx + no_of_bins ] )
+            mean_i = np.mean( i_roi[ idx : idx + no_of_bins ] )
+
+            mean_err = np.sqrt( sum( np.power( err_roi[ idx : idx + no_of_bins ], 2) ) ) / np.sqrt( no_of_bins )
+
+            binned_q.append(mean_q)
+            binned_i.append(mean_i)
+            binned_err.append(mean_err)
+
+            idx = idx + no_of_bins
+        else:
+            binned_q.append(q_roi[idx])
+            binned_i.append(i_roi[idx])
+            binned_err.append(err_roi[idx])
+            idx = idx + 1
+
+    parameters = copy.deepcopy(sasm.getAllParameters())
+
+    newSASM = SASM(binned_i, binned_q, binned_err, parameters)
+
+    history = newSASM.getParameter('history')
+
+    history = {}
+
+    history1 = []
+    history1.append(copy.deepcopy(sasm.getParameter('filename')))
+
+    for key in sasm.getParameter('history'):
+        history1.append({key:copy.deepcopy(sasm.getParameter('history')[key])})
+
+    history['log_binning'] = {'initial_file' : history1, 'initial_points' : len(q_roi), 'final_points': len(bins)}
+
+    newSASM.setParameter('history', history)
+
+    return newSASM
+
+
+def rebin(sasm, rebin_factor):
+    ''' Sets the bin size of the I_q plot
+        end_idx will be lowered to fit the bin_size
+        if needed.
+    '''
+
+    len_iq = len(sasm._i_binned)
+
+    no_of_bins = int(np.floor(len_iq / rebin_factor))
+
+    end_idx = no_of_bins * rebin_factor
+
+    start_idx = 0
+    i_roi = sasm._i_binned[start_idx:end_idx]
+    q_roi = sasm._q_binned[start_idx:end_idx]
+    err_roi = sasm._err_binned[start_idx:end_idx]
+
+    new_i = np.zeros(no_of_bins)
+    new_q = np.zeros(no_of_bins)
+    new_err = np.zeros(no_of_bins)
+
+    for eachbin in range(0, no_of_bins):
+        first_idx = eachbin * rebin_factor
+        last_idx = (eachbin * rebin_factor) + rebin_factor
+
+        new_i[eachbin] = sum(i_roi[first_idx:last_idx]) / rebin_factor
+        new_q[eachbin] = sum(q_roi[first_idx:last_idx]) / rebin_factor
+        new_err[eachbin] = np.sqrt(sum(np.power(err_roi[first_idx:last_idx],2))) / np.sqrt(rebin_factor)
+
+
+    parameters = copy.deepcopy(sasm.getAllParameters())
+
+    newSASM = SASM(new_i, new_q, new_err, parameters)
+
+    qstart, qend = sasm.getQrange()
+
+    new_qstart = int(qstart/float(rebin_factor)+.5)
+    new_qend = int(qend/float(rebin_factor))
+
+    newSASM.setQrange([new_qstart, new_qend])
+
+    history = newSASM.getParameter('history')
+
+    history = {}
+
+    history1 = []
+    history1.append(copy.deepcopy(sasm.getParameter('filename')))
+
+    for key in sasm.getParameter('history'):
+        history1.append({key:copy.deepcopy(sasm.getParameter('history')[key])})
+
+    history['log_binning'] = {'initial_file' : history1, 'initial_points' : len_iq, 'final_points': no_of_bins}
+
+    newSASM.setParameter('history', history)
+
+    return newSASM
+
+
+def binfixed(q, I, er, refq):
+    """
+    This function bins the input q, I, and er into the fixed bins of qref
+    """
+    dq=refq[1]-refq[0]
+
+    qn=np.linspace(refq[0]-dq/2.,refq[-1]+1.5*dq, np.around((refq[-1]+2*dq-refq[0])/dq,0)+1,endpoint=True )
+
+
+    dig=np.digitize(q,qn)
+
+    In=np.array([I[dig==i].mean() for i in range(1,len(qn)-1)])
+
+
+    mI = np.ma.masked_equal(I,0)
+
+    Iern=np.array([np.sqrt(np.sum(np.square(er[dig==i]/mI[dig==i])))/len(I[dig==i]) for i in range(1,len(qn)-1)])
+
+    Iern=Iern*In
+
+    qn=refq
+
+    return qn, In, np.nan_to_num(Iern)
+
+
