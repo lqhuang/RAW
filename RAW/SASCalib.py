@@ -21,6 +21,8 @@ Created on Jul 11, 2010
 #
 #******************************************************************************
 '''
+from __future__ import print_function, division
+
 import numpy as np
 from math import pi, asin, tan, atan, cos
 import sys
@@ -29,7 +31,7 @@ import RAWGlobals
 try:
     import pyFAI, pyFAI.geometryRefinement
     RAWGlobals.usepyFAI = True
-except:
+except ModuleNotFoundError:
     RAWGlobals.usepyFAI = False
 
 def calcAbsScaleConstWater(water_sasm, start_idx, end_idx):
@@ -169,7 +171,7 @@ class RAWCalibration():
                     defaults["poni1"] = p1.max() / 2.
                     defaults["poni2"] = p2.max() / 2.
                 except Exception as err:
-                    print err
+                    print(err)
             if self.ai:
                 for key in defaults.keys():  # not PARAMETERS which holds wavelength
                     val = getattr(self.ai, key, None)

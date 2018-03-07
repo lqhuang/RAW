@@ -22,15 +22,17 @@ Created on Jul 7, 2010
 #******************************************************************************
 '''
 
+from __future__ import print_function
+
 import numpy as np
 from scipy import optimize
 import SASExceptions, SASParser, SASCalib, SASM, RAWGlobals
-import wx, sys, math
+import sys, math  # wx
 
 try:
     import pyFAI
     RAWGlobals.usepyFAI = True
-except:
+except ModuleNotFoundError:
     RAWGlobals.usepyFAI = False
 
 # If C extensions have not been built, build them:
@@ -44,9 +46,9 @@ if RAWGlobals.compiled_extensions:
             SASbuild_Clibs.buildAll()
             import ravg_ext
 
-        except Exception, e:
+        except Exception as error:
             RAWGlobals.compiled_extensions = False
-            print e
+            print(error)
 
 import polygonMasking as polymask
 
@@ -339,7 +341,7 @@ def calibrateAndNormalize(sasm_list, img_list, raw_settings):
     calibrate_check = raw_settings.get('CalibrateMan')
     enable_normalization = raw_settings.get('EnableNormalization')
 
-    pixel_size = pixel_size / 1000
+    pixel_size = int(pixel_size / 1000)
 
     if type(sasm_list) != list:
         sasm_list = [sasm_list]
@@ -405,7 +407,7 @@ def calibrateAndNormalize(sasm_list, img_list, raw_settings):
                     if val != 0:
                         sasm.scaleBinnedIntensity(1/val)
                     else:
-                        print 'WARNING: Divide by zero when normalizing, normalization value ignore!'
+                        print('WARNING: Divide by zero when normalizing, normalization value ignore!')
 
                 elif op == '+':
                     sasm.offsetBinnedIntensity(val)
@@ -415,7 +417,7 @@ def calibrateAndNormalize(sasm_list, img_list, raw_settings):
                     #    raise ValueError('Multiply by Zero when normalizing')
                     if val != 0:
                         sasm.scaleBinnedIntensity(val)
-                        print 'WARNING: Multiply by zero when normalizing, normalization value ignored!'
+                        print('WARNING: Multiply by zero when normalizing, normalization value ignored!')
 
                 elif op == '-':
                     sasm.offsetBinnedIntensity(-val)
@@ -458,7 +460,7 @@ def finetuneAgbePoints(img, x_c, y_c, x1, y1, r):
 
         gaussline = img[gaussy, gaussx]
 
-        #print gaussy, gaussx
+        #print(gaussy, gaussx)
         img_panel = wx.FindWindowByName('ImagePanel')
         img_panel.addLine(gaussx, gaussy)
 
@@ -710,10 +712,12 @@ def createMaskMatrix(img_dim, masks):
         if each.isNegativeMask() == True:
             for eachp in fillPoints:
                 if eachp[0] < maxx and eachp[0] >= 0 and eachp[1] < maxy and eachp[1] >= 0:
+                    eachp = tuple([int(x) for x in eachp])  # check int
                     mask[eachp] = 1
         else:
             for eachp in fillPoints:
                 if eachp[0] < maxx and eachp[0] >= 0 and eachp[1] < maxy and eachp[1] >= 0:
+                    eachp = tuple([int(x) for x in eachp])  # check int
                     mask[eachp] = 0
 
     #Mask is flipped (older RAW versions had flipped image)
@@ -917,7 +921,7 @@ def radialAverage(in_image, x_cin, y_cin, mask = None, readoutNoise_mask = None,
 
     maxlen = int(max(diag1, diag2, diag3, diag4, maxlen1))
 
-    #print diag1, diag2, diag3, diag4, maxlen1
+    #print(diag1, diag2, diag3, diag4, maxlen1)
 
     # we set the "q_limits" (in pixels) so that it does radial avg on entire image (maximum qrange possible).
     q_range = (0, maxlen)
@@ -940,10 +944,10 @@ def radialAverage(in_image, x_cin, y_cin, mask = None, readoutNoise_mask = None,
     xlen_1 = ylen
     ylen_1 = xlen
 
-    # print np.any(hist<0)
-    # print np.any(hist<0)
+    # print(np.any(hist<0))
+    # print(np.any(hist<0))
 
-    print 'Radial averaging in progress...',
+    print('Radial averaging in progress...',)
 
     if RAWGlobals.compiled_extensions:
         ravg_ext.ravg(readoutNoiseFound,
@@ -966,10 +970,10 @@ def radialAverage(in_image, x_cin, y_cin, mask = None, readoutNoise_mask = None,
                        in_image,
                        hist_count, mask, qmatrix, dezingering, dezing_sensitivity)
 
-    print 'done'
+    print('done')
 
-    # print np.any(hist<0)
-    # print np.any(hist_count<0)
+    # print(np.any(hist<0))
+    # print(np.any(hist_count<0))
 
     hist_cnt = hist_count[2,:]    #contains x-mean
 
@@ -981,7 +985,7 @@ def radialAverage(in_image, x_cin, y_cin, mask = None, readoutNoise_mask = None,
 
     iq = hist / hist_count
 
-    # print iq
+    # print(iq)
 
     if x_c > 0 and x_c < xlen and y_c > 0 and y_c < ylen:
         iq[0] = in_image[round(x_c), round(y_c)]  #the center is not included in the radial average, so it is set manually her
@@ -994,13 +998,13 @@ def radialAverage(in_image, x_cin, y_cin, mask = None, readoutNoise_mask = None,
     if readoutNoiseFound:
         #Average readoutNoise
         readoutNoise = readoutN[0,1] /  readoutN[0,0]   ## sum(img(x,y)) / N
-        print 'Readout Noise: ', readoutNoise
+        print('Readout Noise: ', readoutNoise)
 
         #Estimated Standard deviation   - equal to the std of pixels in the area / sqrt(N)
         std_n = np.sqrt(readoutN[0,3] / readoutN[0,0])    # sqrt((X-MEAN)/N)
         errorbarNoise = std_n / np.sqrt(readoutN[0,0])
 
-        print 'Readout Noise Err: ', errorbarNoise
+        print('Readout Noise Err: ', errorbarNoise)
 
         #Readoutnoise average subtraction
         iq = iq - readoutNoise
@@ -1028,7 +1032,7 @@ def radialAverage(in_image, x_cin, y_cin, mask = None, readoutNoise_mask = None,
 
 
 def pyFAIIntegrateCalibrateNormalize(img, parameters, x_cin, y_cin, raw_settings, mask = None, tbs_mask = None):
-    print 'using pyfai!!!!'
+    print('using pyfai!!!!')
     # Get appropriate settings
     sd_distance = raw_settings.get('SampleDistance')
     pixel_size = raw_settings.get('DetectorPixelSize')
@@ -1103,7 +1107,7 @@ def pyFAIIntegrateCalibrateNormalize(img, parameters, x_cin, y_cin, raw_settings
         flatfield_filename = raw_settings.get('NormFlatfieldFile')
         ai.set_flatfiles(flatfield_filename)
 
-    print ai
+    print(ai)
     qmin_theta = SASCalib.calcTheta(sd_distance*1e-3, pixel_size, 0)
     qmin = ((4 * math.pi * math.sin(qmin_theta)) / (wavelength*1e10))
 
@@ -1316,8 +1320,8 @@ def ravg_python(readoutNoiseFound, readoutN, readoutNoise_mask, xlen, ylen, x_c,
         # }
     # }
 
-    print "\n\n********* Radial Averaging and dezingering ********\n"
-    print "Done!"
+    print("\n\n********* Radial Averaging and dezingering ********\n")
+    print("Done!")
 
     # """
 
@@ -1444,7 +1448,7 @@ def ravg_python(readoutNoiseFound, readoutN, readoutNoise_mask, xlen, ylen, x_c,
     #                                           verbose = 0, **kw)
 
     # if success:
-    #     print '\n\n****** ravg_ext module compiled succesfully! *********'
+    #     print('\n\n****** ravg_ext module compiled succesfully! *********')
 
 
 

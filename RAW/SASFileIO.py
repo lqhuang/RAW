@@ -22,33 +22,40 @@ Created on Jul 11, 2010
 #******************************************************************************
 '''
 
+from __future__ import print_function, division
+
 try:
     import hdf5plugin #This has to be imported before fabio, and h5py (and, I think, PIL/pillow) . . .
     use_eiger = True
 except ImportError:
-    print 'RAW WARNING: hdf5plugin not present, Eiger hdf5 images will not load.'
+    print('RAW WARNING: hdf5plugin not present, Eiger hdf5 images will not load.')
     use_eiger = False
 
 import RAWGlobals, SASImage, SASM, SASExceptions
 import numpy as np
-import os, sys, re, cPickle, time, binascii, struct, json, copy
+import os, sys, re, time, binascii, struct, json, copy
 from xml.dom import minidom
 import SASMarHeaderReader #Attempting to remove the reliance on compiled packages. Switchin Mar345 reading to fabio.
+
+try:
+    import cPickle as pickle  # python 2
+except ImportError:
+    import pickle  # python 3
 
 #switched from PIL to pillow
 import PIL
 from PIL import Image #pillow
 
 #Need to hack PIL to make it work with py2exe/cx_freeze:
-import tifffile
-Image._initialized=2
+# import tifffile
+# Image._initialized=2
 
 try:
     import fabio
     use_fabio = True
 
-except Exception, e:
-    print e
+except Exception as error:
+    print(error)
     use_fabio = False
 
     if RAWGlobals.compiled_extensions:
@@ -56,20 +63,20 @@ except Exception, e:
             import packc_ext
             read_mar345=True
 
-        except Exception, e1:
+        except Exception as error1:
                 import SASbuild_Clibs
                 try:
                     SASbuild_Clibs.buildAll()
                     import packc_ext
                     read_mar345=True
 
-                except Exception, e1:
-                    print e1
+                except Exception as error2:
+                    print(error2)
                     RAWGlobals.compiled_extensions = False
-                    print 'Unable to import fabio or pack_ext, Mar345 files cannot be opened.'
+                    print('Unable to import fabio or pack_ext, Mar345 files cannot be opened.')
                     read_mar345 = False
     else:
-        print 'Unable to import fabio or pack_ext, Mar345 files cannot be opened.'
+        print('Unable to import fabio or pack_ext, Mar345 files cannot be opened.')
         read_mar345 = False
 
 
@@ -77,12 +84,12 @@ except Exception, e:
 # try:
 #     import dectris.albula as albula
 # except:
-#     print "Couldn't find albula library!"
+#     print("Couldn't find albula library!")
 
 # try:
 #     import nxs
 # except Exception:
-#     print 'ERROR Loading NeXus Library!'
+#     print('ERROR Loading NeXus Library!')
 
 def createSASMFromImage(img_array, parameters = {}, x_c = None, y_c = None, mask = None,
                         readout_noise_mask = None, tbs_mask = None, dezingering = 0, dezing_sensitivity = 4):
@@ -107,11 +114,11 @@ def createSASMFromImage(img_array, parameters = {}, x_c = None, y_c = None, mask
 
     try:
         [i_raw, q_raw, err_raw, qmatrix] = SASImage.radialAverage(img_array, x_c, y_c, mask, readout_noise_mask, dezingering, dezing_sensitivity)
-    except IndexError, msg:
-        print 'Center coordinates too large: ' + str(msg)
+    except IndexError as msg:
+        print('Center coordinates too large: ' + str(msg))
 
-        x_c = img_array.shape[1]/2
-        y_c = img_array.shape[0]/2
+        x_c = int(img_array.shape[1]/2)
+        y_c = int(img_array.shape[0]/2)
 
         [i_raw, q_raw, err_raw, qmatrix] = SASImage.radialAverage(img_array, x_c, y_c, mask, readout_noise_mask, dezingering, dezing_sensitivity)
 
@@ -162,14 +169,14 @@ def parseTiffTags(filename):
             elif endian == "4D4D":
                 symbol = ">"
             else:
-                print "ERROR!"
+                print("ERROR!")
                 return None
 
             the_answer = image.read(2)
             the_answer = struct.unpack(symbol+'H',the_answer)[0]
 
             if the_answer != 42:
-                print 'answer is not 42!!'
+                print('answer is not 42!!')
                 return None
 
             #Figure out where the Image File Directory is. It can be
@@ -196,7 +203,7 @@ def parseTiffTags(filename):
 
                 #set the class attributes if the tag is one we care about
                 if tag[0] == 256:
-                    print tag
+                    print(tag)
                     tag_dict['ImageWidth'] = tag[3]
 
                 if tag[0] == 257:
@@ -243,10 +250,10 @@ def parseTiffTags(filename):
                 else:
                     tag_dict['ColorProfile'] = "None"
 
-    except Exception, e:
-        print e
-        print filename
-        print 'Error opening tiff file!'
+    except Exception as e:
+        print(e)
+        print(filename)
+        print('Error opening tiff file!')
         return None
 
     return tag_dict
@@ -311,8 +318,8 @@ def load32BitTiffImage(filename):
 
         img = np.reshape(img, im.size)
     #except IOError:
-    except Exception, e:
-        print e
+    except Exception as e:
+        print(e)
         return None, {}
 
     img_hdr = {}
@@ -450,7 +457,7 @@ def loadFrelonImage(filename):
             elif len>2:
                 header_dict[sp_line[0].strip()] = each[each.find('=')+2:-2]
 
-        #print header_dict
+        #print(header_dict)
 
         fo.seek(hdr_size)
 
@@ -566,7 +573,7 @@ def loadEdfImage(filename):
             elif len>2:
                 header_dict[sp_line[0].strip()] = each[each.find('=')+2:-2]
 
-        #print header_dict
+        #print(header_dict)
 
         fo.seek(hdr_size)
 
@@ -607,14 +614,14 @@ def loadSAXSLAB300Image(filename):
         return None, None
 
     try:
-        print tag
+        print(tag)
         if int(PIL.PILLOW_VERSION.split('.')[0])<3:
             tag_with_data = tag[315]
         else:
             tag_with_data = tag[315][0]
 
     except (TypeError, KeyError):
-        print "Wrong file format. Missing TIFF tag number"
+        print("Wrong file format. Missing TIFF tag number")
         raise
 
     img = newArr
@@ -668,7 +675,7 @@ def loadMPAFile(filename):
             # data[data_prefix] = np.array([float(j.strip()) for j in lines[i+1:i+int(num)+1]])
             pos = pos+int(num)+1
     else:
-        print 'cannot recognize the mpa format %s' %(header['None']['mpafmt'])
+        print('cannot recognize the mpa format %s' %(header['None']['mpafmt']))
         return
 
     img = data['CDAT0'].reshape((int(header['ADC1']['range']), int(header['ADC2']['range'])))
@@ -706,7 +713,7 @@ def parseGaneshaHeader(filename):
         DOMTree = minidom.parseString( xml_header )
         params = DOMTree.getElementsByTagName( 'param' )
 
-        print params
+        print(params)
 
         return {}
 
@@ -793,7 +800,7 @@ def parsePilatusHeader(filename):
             header = f.read(4096)
         hdr = {}
     except:
-        print 'Reading Pilatus header failed'
+        print('Reading Pilatus header failed')
         return {}
 
     for line in header:
@@ -808,7 +815,7 @@ def parsePilatusHeader(filename):
                 if line.split()[1] == 'Exposure_time':
                     hdr['Exposure_time'] = float(line.split()[2])
         except:
-            print '** error reading the exposure time **'
+            print('** error reading the exposure time **')
             break
 
     return hdr
@@ -885,7 +892,7 @@ def parseQuantumFileHeader(filename):
         f = open(filename)
         hdr = {}
     except:
-        print 'Reading Quantum header failed'
+        print('Reading Quantum header failed')
         return {}
 
     lineNum = 0
@@ -905,7 +912,7 @@ def parseQuantumFileHeader(filename):
                 break
 
     except:
-        print 'Reading Quantum header failed'
+        print('Reading Quantum header failed')
         return {}
 
     finally:
@@ -1016,7 +1023,7 @@ def parseCHESSG1CountFile(filename):
             counters['date'] = allLines[date_idx][3:-1]
 
     except:
-        print 'Error loading G1 header'
+        print('Error loading G1 header')
 
     return counters
 
@@ -1082,7 +1089,7 @@ def parseCHESSG1CountFileWAXS(filename):
             counters['date'] = allLines[date_idx][3:-1]
 
     except:
-        print 'Error loading G1 header'
+        print('Error loading G1 header')
 
 
     return counters
@@ -1152,7 +1159,7 @@ def parseCHESSG1CountFileEiger(filename):
             counters['date'] = allLines[date_idx][3:-1]
 
     except:
-        print 'Error loading G1 header'
+        print('Error loading G1 header')
 
     return counters
 
@@ -1252,7 +1259,7 @@ def parseBioCATlogfile(filename):
             counters[labels[a].strip()]=vals[a].strip()
 
     else:
-        print 'Error loading BioCAT header'
+        print('Error loading BioCAT header')
 
 
     return counters
@@ -1449,15 +1456,19 @@ def loadHeader(filename, new_filename, header_type):
         except IOError as io:
             raise SASExceptions.HeaderLoadError(str(io).replace("u'",''))
         except Exception as e:
-            print e
+            print(e)
             raise SASExceptions.HeaderLoadError('Header file for : ' + str(filename) + ' could not be read or contains incorrectly formatted data. ')
     else:
         hdr = {}
 
     #Clean up headers by removing spaces in header names and non-unicode characters)
-    hdr = {key.replace(' ', '_').translate(None, '()[]') : hdr[key] for key in hdr}
-
-    hdr = { key : unicode(hdr[key], errors='ignore') if type(hdr[key]) == str else hdr[key] for key in hdr}
+    try:  # python 2
+        hdr = {key.replace(' ', '_').translate(None, '()[]') : hdr[key] for key in hdr}
+        hdr = { key : unicode(hdr[key], errors='ignore') if type(hdr[key]) == str else hdr[key] for key in hdr}
+    except TypeError:  # python 3
+        hdr = {key.replace(' ', '_').translate(''.maketrans('', '', '()[]')) : 
+               hdr[key].decode('utf-8') if isinstance(hdr[key], bytes) else hdr[key]
+               for key in hdr}
 
     try:
         json.dumps(hdr)
@@ -1473,7 +1484,7 @@ def loadImage(filename, image_type):
     try:
         img, imghdr = all_image_types[image_type](filename)
     except (ValueError, TypeError, KeyError, fabio.fabioutils.NotGoodReader, Exception) as msg:
-        # print msg
+        # print(msg)
         raise SASExceptions.WrongImageFormat('Error loading image, ' + str(msg))
 
     if type(img) != list:
@@ -1484,9 +1495,13 @@ def loadImage(filename, image_type):
 
     #Clean up headers by removing spaces in header names and non-unicode characters)
     for hdr in imghdr:
-        hdr = {key.replace(' ', '_').translate(None, '()[]') : hdr[key] for key in hdr}
-
-        hdr = { key : unicode(hdr[key], errors='ignore') if type(hdr[key]) == str else hdr[key] for key in hdr}
+        try:  # python 2
+            hdr = {key.replace(' ', '_').translate(None, '()[]') : hdr[key] for key in hdr}
+            hdr = { key : unicode(hdr[key], errors='ignore') if type(hdr[key]) == str else hdr[key] for key in hdr}
+        except TypeError:  # python 3
+            hdr = {key.replace(' ', '_').translate(''.maketrans('', '', '()[]')) : 
+                   hdr[key].decode('utf-8') if isinstance(hdr[key], bytes) else hdr[key]
+                   for key in hdr}
 
         try:
             json.dumps(hdr)
@@ -1507,25 +1522,25 @@ def loadFile(filename, raw_settings, no_processing = False):
     '''
     try:
         file_type = checkFileType(filename)
-        print file_type
+        print(file_type)
     except IOError:
         raise
-    except Exception, msg:
-        print >> sys.stderr, str(msg)
+    except Exception as msg:
+        print(str(msg), file=sys.stderr)
         file_type = None
 
     if file_type == 'image':
         try:
             sasm, img = loadImageFile(filename, raw_settings)
-        except (ValueError, AttributeError), msg:
-            print 'SASFileIO.loadFile : ' + str(msg)
+        except (ValueError, AttributeError) as msg:
+            print('SASFileIO.loadFile : ' + str(msg))
             raise SASExceptions.UnrecognizedDataFormat('No data could be retrieved from the file, unknown format.')
 
         if not RAWGlobals.usepyFAI_integration:
             try:
                 sasm = SASImage.calibrateAndNormalize(sasm, img, raw_settings)
-            except (ValueError, NameError), msg:
-                print msg
+            except (ValueError, NameError) as msg:
+                print(msg)
 
         #Always do some post processing for image files
         if type(sasm) == list:
@@ -1576,7 +1591,7 @@ def loadAsciiFile(filename, file_type):
 
     sasm = None
 
-    if ascii_formats.has_key(file_type):
+    if file_type in ascii_formats:
         sasm = ascii_formats[file_type](filename)
 
     if sasm is not None and file_type != 'ift' and file_type != 'out':
@@ -1701,7 +1716,7 @@ def loadImageFile(filename, raw_settings):
         y_c = img.shape[0]-y_c
 
         if not RAWGlobals.usepyFAI_integration:
-            # print 'Using standard RAW integration'
+            # print('Using standard RAW integration')
             ## Flatfield correction.. this part gets moved to a image correction function later
             if raw_settings.get('NormFlatfieldEnabled'):
                 if flatfield_filename != None:
@@ -1769,14 +1784,14 @@ def loadOutFile(filename):
             outfile.append(line)
 
             if twocol_match:
-                # print line
+                # print(line)
                 found = twocol_match.group().split()
 
                 qfull.append(float(found[0]))
                 Ireg.append(float(found[1]))
 
             elif threecol_match:
-                #print line
+                #print(line)
                 found = threecol_match.group().split()
 
                 R.append(float(found[0]))
@@ -1784,7 +1799,7 @@ def loadOutFile(filename):
                 Perr.append(float(found[2]))
 
             elif fivecol_match:
-                #print line
+                #print(line)
                 found = fivecol_match.group().split()
 
                 qfull.append(float(found[0]))
@@ -1878,13 +1893,13 @@ def loadSECFile(filename):
     file = open(filename, 'r')
 
     try:
-        secm_data = cPickle.load(file)
-    except (ImportError, EOFError), e:
-        print e
-        # print 'Error loading wsp file, trying different method.'
+        secm_data = pickle.load(file)
+    except (ImportError, EOFError) as e:
+        print(e)
+        # print('Error loading wsp file, trying different method.')
         file.close()
         file = open(filename, 'rb')
-        secm_data = cPickle.load(file)
+        secm_data = pickle.load(file)
     finally:
         file.close()
 
@@ -1947,7 +1962,7 @@ def makeSECFile(secm_data):
 
         sasm_list.append(new_sasm)
 
-    # print sasm_list
+    # print(sasm_list)
 
     new_secm = SASM.SECM(secm_data['file_list'], sasm_list, secm_data['frame_list'], secm_data['parameters'])
 
@@ -2050,7 +2065,7 @@ def loadIftFile(filename):
             threecol_match = three_col_fit.match(line)
 
             if threecol_match:
-                #print line
+                #print(line)
                 found = threecol_match.group().split()
 
                 r.append(float(found[0]))
@@ -2075,7 +2090,7 @@ def loadIftFile(filename):
                 fourcol_match = iq_pattern.match(line)
 
                 if fourcol_match:
-                    #print line
+                    #print(line)
                     found = fourcol_match.group().split()
 
                     q.append(float(found[0]))
@@ -2089,9 +2104,9 @@ def loadIftFile(filename):
             err_orig = np.array(err_orig)
             fit = np.array(fit)
 
-        except Exception, e:
-            print 'No fit data found, or error loading fit data'
-            print e
+        except Exception as e:
+            print('No fit data found, or error loading fit data')
+            print(e)
 
 
     #Check to see if there is any header from RAW, and if so get that.
@@ -2111,9 +2126,9 @@ def loadIftFile(filename):
             hdr_str=hdr_str+each_line
         try:
             hdict = dict(json.loads(hdr_str))
-            print 'Loading RAW info/analysis...'
-        except Exception, e:
-            print 'Unable to load header/analysis information. Maybe the file was not generated by RAW or was generated by an old version of RAW?'
+            print('Loading RAW info/analysis...')
+        except Exception as e:
+            print('Unable to load header/analysis information. Maybe the file was not generated by RAW or was generated by an old version of RAW?')
             hdict = {}
 
     parameters = hdict
@@ -2265,7 +2280,7 @@ def loadPrimusDatFile(filename):
             iq_match = iq_pattern.match(line)
 
             if iq_match:
-                #print line
+                #print(line)
                 found = iq_match.group().split()
                 q.append(float(found[0]))
                 i.append(float(found[1]))
@@ -2295,9 +2310,9 @@ def loadPrimusDatFile(filename):
             hdr_str=hdr_str+each_line
         try:
             hdict = dict(json.loads(hdr_str))
-            print 'Loading RAW info/analysis...'
+            print('Loading RAW info/analysis...')
         except Exception:
-            # print 'Unable to load header/analysis information. Maybe the file was not generated by RAW or was generated by an old version of RAW?'
+            # print('Unable to load header/analysis information. Maybe the file was not generated by RAW or was generated by an old version of RAW?')
             hdict = {}
 
 
@@ -2507,8 +2522,8 @@ def loadCsvFile(filename):
                 err.append(float(found[2].rstrip('\r\n')))
 
             else:
-                print 'No match:'
-                print line
+                print('No match:')
+                print(line)
 
             if param_match:
                 found = param_match.group().split('=')
@@ -2580,9 +2595,9 @@ def saveMeasurement(sasm, save_path, raw_settings, filetype = '.dat'):
             try:
                 writeIftFile(each_sasm, os.path.join(save_path, filename + filetype))
             except TypeError as e:
-                print 'Error in saveMeasurement, type: %s, error: %s' %(type(e).__name__, e)
-                print 'Resaving file without header'
-                print each_sasm.getAllParameters()
+                print('Error in saveMeasurement, type: %s, error: %s' %(type(e).__name__, e))
+                print('Resaving file without header')
+                print(each_sasm.getAllParameters())
                 writeIftFile(each_sasm, os.path.join(save_path, filename + filetype), False)
 
                 raise SASExceptions.HeaderSaveError(e)
@@ -2592,9 +2607,9 @@ def saveMeasurement(sasm, save_path, raw_settings, filetype = '.dat'):
             try:
                 writeRadFile(each_sasm, os.path.join(save_path, filename + filetype), header_on_top)
             except TypeError as e:
-                print 'Error in saveMeasurement, type: %s, error: %s' %(type(e).__name__, e)
-                print 'Resaving file without header'
-                print each_sasm.getAllParameters()
+                print('Error in saveMeasurement, type: %s, error: %s' %(type(e).__name__, e))
+                print('Resaving file without header')
+                print(each_sasm.getAllParameters())
                 writeRadFile(each_sasm, os.path.join(save_path, filename + filetype), header_on_top, False)
 
                 raise SASExceptions.HeaderSaveError(e)
@@ -3101,14 +3116,34 @@ def loadWorkspace(load_path):
 
         try:
             sasm_dict = cPickle.load(file)
-        except (ImportError, EOFError), e:
-            print e
-            print 'Error loading wsp file, trying different method.'
+        except (ImportError, EOFError) as e:
+            print(e)
+            print('Error loading wsp file, trying different method.')
             file.close()
             file = open(load_path, 'rb')
             sasm_dict = cPickle.load(file)
 
     return sasm_dict
+
+
+def _to_utf8(data):
+    """
+    https://stackoverflow.com/questions/956867/how-to-get-string-objects-instead-of-unicode-from-json
+    """
+    # if this is a bytes string, return its unicode 8 string representation
+    if isinstance(data, bytes):
+        return str(data.decode('utf-8'))
+    # if this is a list of values, return list of byteified values
+    if isinstance(data, list):
+        return [_to_utf8(item) for item in data]
+    # if this is a dictionary, return dictionary of byteified keys and values
+    # but only if we haven't already byteified it
+    if isinstance(data, dict):
+        return {
+            _to_utf8(key): _to_utf8(value) for key, value in data.items()
+        }
+    # if it's anything else, return it in its original form
+    return data
 
 
 def writeHeader(d, f2, ignore_list = []):
@@ -3121,6 +3156,8 @@ def writeHeader(d, f2, ignore_list = []):
         if ignored_key in d.keys():
             del d[ignored_key]
 
+    # python 3 compatibility: check bytes string by object hook
+    d = _to_utf8(d)
     f2.write(json.dumps(d,indent = 4, sort_keys = True, cls = MyEncoder))
 
     f2.write('\n\n')
@@ -3229,14 +3266,16 @@ def writeOutFile(m, filename):
 def checkFileType(filename):
     ''' Tries to find out what file type it is and reports it back '''
 
-    try:
-        with open(filename, "rb") as f:           # Open in binary mode for portability
-            try:
-                type_tst = SASMarHeaderReader.stringvar(SASMarHeaderReader.fread(f,'cc'))
-            except:
-                raise Exception('Reading a byte of file ' + filename + ' failed..')
-    except IOError:
-        raise Exception('Reading file ' + filename + ' failed..')
+    # try:
+    #     with open(filename, "rb") as f:           # Open in binary mode for portability
+    #         try:
+    #             type_tst = SASMarHeaderReader.stringvar(SASMarHeaderReader.fread(f,'cc'))
+    #         except:
+    #             raise Exception('Reading a byte of file ' + filename + ' failed..')
+    # except IOError:
+    #     raise Exception('Reading file ' + filename + ' failed..')
+
+    type_tst = None
 
     path, ext = os.path.splitext(filename)
 

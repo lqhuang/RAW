@@ -21,8 +21,22 @@ Created on Jul 16, 2010
 #
 #******************************************************************************
 '''
-import wx, cPickle, copy, os
+from __future__ import print_function, division
+
+# import wx, cPickle, copy, os
+try:
+    import cPickle as pickle  # python 2
+except ModuleNotFoundError:
+    import pickle  # python 3
+import copy, os
 import RAWGlobals, SASFileIO
+
+
+CURR_ID = []
+def NewId():
+    CURR_ID.append(len(CURR_ID))
+    return CURR_ID[-1]
+
 
 class RawGuiSettings:
     '''
@@ -38,60 +52,60 @@ class RawGuiSettings:
 
         if settings == None:
             self._params = {
-                            #'NormalizeConst'    : [1.0,   wx.NewId(), 'float'],
-                            #'NormalizeConstChk' : [False, wx.NewId(),  'bool'],
-                            #'NormalizeM2'       : [False, wx.NewId(),  'bool'],
-                            #'NormalizeTime'     : [False, wx.NewId(),  'bool'],
-                            #'NormalizeM1'       : [False, wx.NewId(),  'bool'],
+                            #'NormalizeConst'    : [1.0,   NewId(), 'float'],
+                            #'NormalizeConstChk' : [False, NewId(),  'bool'],
+                            #'NormalizeM2'       : [False, NewId(),  'bool'],
+                            #'NormalizeTime'     : [False, NewId(),  'bool'],
+                            #'NormalizeM1'       : [False, NewId(),  'bool'],
 
-							'NormFlatfieldEnabled'	: [False,   wx.NewId(),  'bool'],
+							'NormFlatfieldEnabled'	: [False,   NewId(),  'bool'],
 
-                            'NormAbsWater'      	: [False,   wx.NewId(),  'bool'],
-                            'NormAbsWaterI0'    	: [0.01632, wx.NewId(),  'float'],
-                            'NormAbsWaterTemp'  	: ['25',    wx.NewId(),  'choice'],
-                            'NormAbsWaterConst' 	: [1.0,     wx.NewId(),  'float'],
+                            'NormAbsWater'      	: [False,   NewId(),  'bool'],
+                            'NormAbsWaterI0'    	: [0.01632, NewId(),  'float'],
+                            'NormAbsWaterTemp'  	: ['25',    NewId(),  'choice'],
+                            'NormAbsWaterConst' 	: [1.0,     NewId(),  'float'],
 
-                            'NormalizeTrans'    : [False, wx.NewId(),  'bool'],
-                            'Calibrate'         : [False, wx.NewId(),  'bool'],  # Calibrate AgBe
-                            'CalibrateMan'      : [True, wx.NewId(),  'bool'],  # Calibrate manual (wavelength / distance)
-                            'AutoBgSubtract'    : [False, wx.NewId(),  'bool'],
-                            'CountNormalize'    : [1.0,   wx.NewId(), 'float'],
+                            'NormalizeTrans'    : [False, NewId(),  'bool'],
+                            'Calibrate'         : [False, NewId(),  'bool'],  # Calibrate AgBe
+                            'CalibrateMan'      : [True, NewId(),  'bool'],  # Calibrate manual (wavelength / distance)
+                            'AutoBgSubtract'    : [False, NewId(),  'bool'],
+                            'CountNormalize'    : [1.0,   NewId(), 'float'],
 
-                            'AutoBIFT'          : [False, wx.NewId(), 'bool'],
-                            'AutoAvg'           : [False, wx.NewId(), 'bool'],
-                            'AutoAvgRemovePlots': [False, wx.NewId(), 'bool'],
+                            'AutoBIFT'          : [False, NewId(), 'bool'],
+                            'AutoAvg'           : [False, NewId(), 'bool'],
+                            'AutoAvgRemovePlots': [False, NewId(), 'bool'],
 
-                            'AutoAvgRegExp'     : ['', wx.NewId(), 'text'],
-                            'AutoAvgNameRegExp' : ['', wx.NewId(), 'text'],
-                            'AutoAvgNoOfFrames' : [1,  wx.NewId(),  'int'],
-                            'AutoBgSubRegExp'   : ['', wx.NewId(), 'text'],
+                            'AutoAvgRegExp'     : ['', NewId(), 'text'],
+                            'AutoAvgNameRegExp' : ['', NewId(), 'text'],
+                            'AutoAvgNoOfFrames' : [1,  NewId(),  'int'],
+                            'AutoBgSubRegExp'   : ['', NewId(), 'text'],
 
-                            'UseHeaderForMask': [False, wx.NewId(), 'bool'],
-                            'DetectorFlipped90':[False, wx.NewId(), 'bool'],
+                            'UseHeaderForMask': [False, NewId(), 'bool'],
+                            'DetectorFlipped90':[False, NewId(), 'bool'],
 
                             #CORRECTIONS
-                            'DoSolidAngleCorrection' : [True, wx.NewId(), 'bool'],
+                            'DoSolidAngleCorrection' : [True, NewId(), 'bool'],
 
 
                             #CENTER / BINNING
-                            'Binsize'    : [1,     wx.NewId(), 'int'],
-                            'Xcenter'    : [512.0, wx.NewId(), 'float'],
-                            'Ycenter'    : [512.0, wx.NewId(), 'float'],
-                            'QrangeLow'  : [25,    wx.NewId(), 'int'],
-                            'QrangeHigh' : [9999,  wx.NewId(), 'int'],
-                            'StartPoint' : [0,     wx.NewId(), 'int'],
-                            'EndPoint'   : [0,     wx.NewId(), 'int'],
+                            'Binsize'    : [1,     NewId(), 'int'],
+                            'Xcenter'    : [512.0, NewId(), 'float'],
+                            'Ycenter'    : [512.0, NewId(), 'float'],
+                            'QrangeLow'  : [25,    NewId(), 'int'],
+                            'QrangeHigh' : [9999,  NewId(), 'int'],
+                            'StartPoint' : [0,     NewId(), 'int'],
+                            'EndPoint'   : [0,     NewId(), 'int'],
                             'ImageDim'   : [[1024,1024]],
 
                             #MASKING
-                            'SampleFile'              : [None, wx.NewId(), 'text'],
-                            'BackgroundSASM'          : [None, wx.NewId(), 'text'],
+                            'SampleFile'              : [None, NewId(), 'text'],
+                            'BackgroundSASM'          : [None, NewId(), 'text'],
 
-                            'DataSECM'                : [None, wx.NewId(), 'text'],
+                            'DataSECM'                : [None, NewId(), 'text'],
 
-                            'NormAbsWaterFile'        : [None, wx.NewId(), 'text'],
-                            'NormAbsWaterEmptyFile'   : [None, wx.NewId(), 'text'],
-							'NormFlatfieldFile'		  : [None, wx.NewId(), 'text'],
+                            'NormAbsWaterFile'        : [None, NewId(), 'text'],
+                            'NormAbsWaterEmptyFile'   : [None, NewId(), 'text'],
+							'NormFlatfieldFile'		  : [None, NewId(), 'text'],
 
                             'TransparentBSMask'       : [None],
                             'TransparentBSMaskParams' : [None],
@@ -108,85 +122,85 @@ class RawGuiSettings:
                             'MaskDimension'          : [1024,1024],
 
                             #Q-CALIBRATION
-                            'WaveLength'          : [1.0,  wx.NewId(), 'float'],
-                            'SampleDistance'      : [1000, wx.NewId(), 'float'],
-                            'SampleThickness'     : [0.0, wx.NewId(), 'float'],
-                            'ReferenceQ'          : [0.0, wx.NewId(), 'float'],
-                            'ReferenceDistPixel'  : [0,   wx.NewId(), 'int'],
-                            'ReferenceDistMm'     : [0.0, wx.NewId(), 'float'],
-                            'DetectorPixelSize'   : [70.5, wx.NewId(), 'float'],
-                            'SmpDetectOffsetDist' : [0.0, wx.NewId(), 'float'],
+                            'WaveLength'          : [1.0,  NewId(), 'float'],
+                            'SampleDistance'      : [1000, NewId(), 'float'],
+                            'SampleThickness'     : [0.0, NewId(), 'float'],
+                            'ReferenceQ'          : [0.0, NewId(), 'float'],
+                            'ReferenceDistPixel'  : [0,   NewId(), 'int'],
+                            'ReferenceDistMm'     : [0.0, NewId(), 'float'],
+                            'DetectorPixelSize'   : [70.5, NewId(), 'float'],
+                            'SmpDetectOffsetDist' : [0.0, NewId(), 'float'],
 
 
 							#SANS Parameters
-							'SampleThickness'		: [0.1,  wx.NewId(), 'float'],
-							'DarkCorrEnabled'		: [False,   wx.NewId(),  'bool'],
-							'DarkCorrFilename'		: [None, wx.NewId(), 'text'],
+							'SampleThickness'		: [0.1,  NewId(), 'float'],
+							'DarkCorrEnabled'		: [False,   NewId(),  'bool'],
+							'DarkCorrFilename'		: [None, NewId(), 'text'],
 
 
                             #DEFAULT BIFT PARAMETERS
-                            'maxDmax'     : [400.0,  wx.NewId(), 'float'],
-                            'minDmax'     : [10.0,   wx.NewId(), 'float'],
-                            'DmaxPoints'  : [10,     wx.NewId(), 'int'],
-                            'maxAlpha'    : [1e10,   wx.NewId(), 'float'],
-                            'minAlpha'    : [150.0,  wx.NewId(), 'float'],
-                            'AlphaPoints' : [16,     wx.NewId(), 'int'],
-                            'PrPoints'    : [50,     wx.NewId(), 'int'],
+                            'maxDmax'     : [400.0,  NewId(), 'float'],
+                            'minDmax'     : [10.0,   NewId(), 'float'],
+                            'DmaxPoints'  : [10,     NewId(), 'int'],
+                            'maxAlpha'    : [1e10,   NewId(), 'float'],
+                            'minAlpha'    : [150.0,  NewId(), 'float'],
+                            'AlphaPoints' : [16,     NewId(), 'int'],
+                            'PrPoints'    : [50,     NewId(), 'int'],
 
                             #DEFAULT pyGNOM PARAMETERS
-                            'pygnomMaxAlpha'    : [60,   wx.NewId(), 'float'],
-                            'pygnomMinAlpha'    : [0.01, wx.NewId(), 'float'],
-                            'pygnomAlphaPoints' : [100,  wx.NewId(), 'int'],
-                            'pygnomPrPoints'    : [50,   wx.NewId(), 'int'],
-                            'pygnomFixInitZero' : [True, wx.NewId(), 'bool'],
+                            'pygnomMaxAlpha'    : [60,   NewId(), 'float'],
+                            'pygnomMinAlpha'    : [0.01, NewId(), 'float'],
+                            'pygnomAlphaPoints' : [100,  NewId(), 'int'],
+                            'pygnomPrPoints'    : [50,   NewId(), 'int'],
+                            'pygnomFixInitZero' : [True, NewId(), 'bool'],
 
-                            'pyOSCILLweight'    : [3.0, wx.NewId(), 'float'],
-                            'pyVALCENweight'    : [1.0, wx.NewId(), 'float'],
-                            'pyPOSITVweight'    : [1.0, wx.NewId(), 'float'],
-                            'pySYSDEVweight'    : [3.0, wx.NewId(), 'float'],
-                            'pySTABILweight'    : [3.0, wx.NewId(), 'float'],
-                            'pyDISCRPweight'    : [1.0, wx.NewId(), 'float'],
+                            'pyOSCILLweight'    : [3.0, NewId(), 'float'],
+                            'pyVALCENweight'    : [1.0, NewId(), 'float'],
+                            'pyPOSITVweight'    : [1.0, NewId(), 'float'],
+                            'pySYSDEVweight'    : [3.0, NewId(), 'float'],
+                            'pySTABILweight'    : [3.0, NewId(), 'float'],
+                            'pyDISCRPweight'    : [1.0, NewId(), 'float'],
 
                             #DEFAULT IFT PARAMETERS:
                             'IFTAlgoList'        : [['BIFT', 'pyGNOM']],
                             'IFTAlgoChoice'      : [['BIFT']],
 
                             #ARTIFACT REMOVAL:
-                            'ZingerRemovalRadAvg'    : [False, wx.NewId(), 'bool'],
-                            'ZingerRemovalRadAvgStd' : [4.0,     wx.NewId(), 'float'],
+                            'ZingerRemovalRadAvg'    : [False, NewId(), 'bool'],
+                            'ZingerRemovalRadAvgStd' : [4.0,     NewId(), 'float'],
 
-                            'ZingerRemoval'     : [False, wx.NewId(), 'bool'],
-                            'ZingerRemoveSTD'   : [4,     wx.NewId(), 'int'],
-                            'ZingerRemoveWinLen': [10,    wx.NewId(), 'int'],
-                            'ZingerRemoveIdx'   : [10,    wx.NewId(), 'int'],
+                            'ZingerRemoval'     : [False, NewId(), 'bool'],
+                            'ZingerRemoveSTD'   : [4,     NewId(), 'int'],
+                            'ZingerRemoveWinLen': [10,    NewId(), 'int'],
+                            'ZingerRemoveIdx'   : [10,    NewId(), 'int'],
 
-                            'ZingerRemovalAvgStd'  : [8,     wx.NewId(), 'int'],
-                            'ZingerRemovalAvg'     : [False, wx.NewId(), 'bool'],
+                            'ZingerRemovalAvgStd'  : [8,     NewId(), 'int'],
+                            'ZingerRemovalAvg'     : [False, NewId(), 'bool'],
 
                             #SAVE DIRECTORIES
-                            'ProcessedFilePath'    : [None,  wx.NewId(), 'text'],
-                            'AveragedFilePath'     : [None,  wx.NewId(), 'text'],
-                            'SubtractedFilePath'   : [None,  wx.NewId(), 'text'],
-                            'BiftFilePath'         : [None,  wx.NewId(), 'text'],
-                            'GnomFilePath'         : [None,  wx.NewId(), 'text'],
-                            'AutoSaveOnImageFiles' : [False, wx.NewId(), 'bool'],
-                            'AutoSaveOnAvgFiles'   : [False, wx.NewId(), 'bool'],
-                            'AutoSaveOnSub'        : [False, wx.NewId(), 'bool'],
-                            'AutoSaveOnBift'       : [False, wx.NewId(), 'bool'],
-                            'AutoSaveOnGnom'       : [False, wx.NewId(), 'bool'],
+                            'ProcessedFilePath'    : [None,  NewId(), 'text'],
+                            'AveragedFilePath'     : [None,  NewId(), 'text'],
+                            'SubtractedFilePath'   : [None,  NewId(), 'text'],
+                            'BiftFilePath'         : [None,  NewId(), 'text'],
+                            'GnomFilePath'         : [None,  NewId(), 'text'],
+                            'AutoSaveOnImageFiles' : [False, NewId(), 'bool'],
+                            'AutoSaveOnAvgFiles'   : [False, NewId(), 'bool'],
+                            'AutoSaveOnSub'        : [False, NewId(), 'bool'],
+                            'AutoSaveOnBift'       : [False, NewId(), 'bool'],
+                            'AutoSaveOnGnom'       : [False, NewId(), 'bool'],
 
                             #IMAGE FORMATS
                             'ImageFormatList'      : [SASFileIO.all_image_types],
-                            'ImageFormat'          : ['Pilatus', wx.NewId(), 'choice'],
+                            'ImageFormat'          : ['Pilatus', NewId(), 'choice'],
 
                             #HEADER FORMATS
                             'ImageHdrFormatList'   : [SASFileIO.all_header_types],
-                            'ImageHdrFormat'       : ['None', wx.NewId(), 'choice'],
+                            'ImageHdrFormat'       : ['None', NewId(), 'choice'],
 
                             'ImageHdrList'         : [None],
                             'FileHdrList'          : [None],
 
-                            'UseHeaderForCalib'    : [False, wx.NewId(), 'bool'],
+                            'UseHeaderForCalib'    : [False, NewId(), 'bool'],
 
                             # Header bind list with [(Description : parameter key, header_key)]
                             'HeaderBindList'       : [{'Beam X Center'            : ['Xcenter',           None, ''],
@@ -196,36 +210,36 @@ class RawGuiSettings:
                                                        'Detector Pixel Size'      : ['DetectorPixelSize', None, '']}],
                                                        # 'Number of Frames'         : ['NumberOfFrames',    None, '']}],
 
-                            'NormalizationList'    : [None, wx.NewId(), 'text'],
-                            'EnableNormalization'  : [True, wx.NewId(), 'bool'],
+                            'NormalizationList'    : [None, NewId(), 'text'],
+                            'EnableNormalization'  : [True, NewId(), 'bool'],
 
-                            'OnlineFilterList'     : [None, wx.NewId(), 'text'],
-                            'EnableOnlineFiltering': [False, wx.NewId(), 'bool'],
-                            'OnlineModeOnStartup'  : [False, wx.NewId(), 'bool'],
-	                        'OnlineStartupDir'     : [None, wx.NewId(), 'text'],
+                            'OnlineFilterList'     : [None, NewId(), 'text'],
+                            'EnableOnlineFiltering': [False, NewId(), 'bool'],
+                            'OnlineModeOnStartup'  : [False, NewId(), 'bool'],
+	                        'OnlineStartupDir'     : [None, NewId(), 'text'],
 
-                            'MWStandardMW'         : [0, wx.NewId(), 'float'],
-                            'MWStandardI0'         : [0, wx.NewId(), 'float'],
-                            'MWStandardConc'       : [0, wx.NewId(), 'float'],
-                            'MWStandardFile'       : ['', wx.NewId(), 'text'],
+                            'MWStandardMW'         : [0, NewId(), 'float'],
+                            'MWStandardI0'         : [0, NewId(), 'float'],
+                            'MWStandardConc'       : [0, NewId(), 'float'],
+                            'MWStandardFile'       : ['', NewId(), 'text'],
 
                             #Initialize volume of correlation molecular mass values.
                             #Values from Rambo, R. P. & Tainer, J. A. (2013). Nature. 496, 477-481.
-                            'MWVcType'             : ['Protein', wx.NewId(), 'choice'],
-                            'MWVcAProtein'         : [1.0, wx.NewId(), 'float'], #The 'A' coefficient for proteins
-                            'MWVcBProtein'         : [0.1231, wx.NewId(), 'float'], #The 'B' coefficient for proteins
-                            'MWVcARna'             : [0.808, wx.NewId(), 'float'], #The 'A' coefficient for proteins
-                            'MWVcBRna'             : [0.00934, wx.NewId(), 'float'], #The 'B' coefficient for proteins
+                            'MWVcType'             : ['Protein', NewId(), 'choice'],
+                            'MWVcAProtein'         : [1.0, NewId(), 'float'], #The 'A' coefficient for proteins
+                            'MWVcBProtein'         : [0.1231, NewId(), 'float'], #The 'B' coefficient for proteins
+                            'MWVcARna'             : [0.808, NewId(), 'float'], #The 'A' coefficient for proteins
+                            'MWVcBRna'             : [0.00934, NewId(), 'float'], #The 'B' coefficient for proteins
 
                             #Initialize porod volume molecularm ass values.
-                            'MWVpRho'              : [0.83*10**(-3), wx.NewId(), 'float'], #The density in kDa/A^3
+                            'MWVpRho'              : [0.83*10**(-3), NewId(), 'float'], #The density in kDa/A^3
 
                             #Initialize Absolute scattering calibration values.
                             #Default values from Mylonas & Svergun, J. App. Crys. 2007.
-                            'MWAbsRhoMprot'         : [3.22*10**23, wx.NewId(), 'float'], #e-/g, # electrons per dry mass of protein
-                            'MWAbsRhoSolv'          : [3.34*10**23, wx.NewId(), 'float'], #e-/cm^-3, # electrons per volume of aqueous solvent
-                            'MWAbsNuBar'            : [0.7425, wx.NewId(), 'float'], #cm^3/g, # partial specific volume of the protein
-                            'MWAbsR0'               : [2.8179*10**-13, wx.NewId(), 'float'], #cm, scattering lenght of an electron
+                            'MWAbsRhoMprot'         : [3.22*10**23, NewId(), 'float'], #e-/g, # electrons per dry mass of protein
+                            'MWAbsRhoSolv'          : [3.34*10**23, NewId(), 'float'], #e-/cm^-3, # electrons per volume of aqueous solvent
+                            'MWAbsNuBar'            : [0.7425, NewId(), 'float'], #cm^3/g, # partial specific volume of the protein
+                            'MWAbsR0'               : [2.8179*10**-13, NewId(), 'float'], #cm, scattering lenght of an electron
 
                             'CurrentCfg'         : [None],
                             'CompatibleFormats'  : [['.rad', '.tiff', '.tif', '.img', '.csv', '.dat', '.txt', '.sfrm', '.dm3', '.edf',
@@ -235,85 +249,85 @@ class RawGuiSettings:
 
 
                             #SEC Settings:
-                            'secCalcThreshold'      : [1.02, wx.NewId(), 'float'],
+                            'secCalcThreshold'      : [1.02, NewId(), 'float'],
 
                             #GUI Settings:
                             'csvIncludeData'      : [None],
-                            'ManipItemCollapsed'  : [False, wx.NewId(), 'bool'] ,
+                            'ManipItemCollapsed'  : [False, NewId(), 'bool'] ,
                             'CurrentFilePath'     : [None],
 
 
-                            'DatHeaderOnTop'      : [False, wx.NewId(), 'bool'],
-                            'PromptConfigLoad'    : [True, wx.NewId(), 'bool'],
+                            'DatHeaderOnTop'      : [False, NewId(), 'bool'],
+                            'PromptConfigLoad'    : [True, NewId(), 'bool'],
 
                             #ATSAS settings:
-                            'autoFindATSAS'       : [True, wx.NewId(), 'bool'],
-                            'ATSASDir'            : ['', wx.NewId(), 'bool'],
+                            'autoFindATSAS'       : [True, NewId(), 'bool'],
+                            'ATSASDir'            : ['', NewId(), 'bool'],
 
                             #GNOM settings
-                            'gnomExpertFile'        : ['', wx.NewId(), 'text'],
-                            'gnomForceRminZero'     : ['Y', wx.NewId(), 'choice'],
-                            'gnomForceRmaxZero'     : ['Y', wx.NewId(), 'choice'],
-                            'gnomNPoints'           : [171, wx.NewId(), 'int'],
-                            'gnomInitialAlpha'      : [0.0, wx.NewId(), 'float'],
-                            'gnomAngularScale'      : [1, wx.NewId(), 'int'],
-                            'gnomSystem'            : [0, wx.NewId(), 'int'],
-                            'gnomFormFactor'        : ['', wx.NewId(), 'text'],
-                            'gnomRadius56'          : [-1, wx.NewId(), 'float'],
-                            'gnomRmin'              : [-1, wx.NewId(), 'float'],
-                            'gnomFWHM'              : [-1, wx.NewId(), 'float'],
-                            'gnomAH'                : [-1, wx.NewId(), 'float'],
-                            'gnomLH'                : [-1, wx.NewId(), 'float'],
-                            'gnomAW'                : [-1, wx.NewId(), 'float'],
-                            'gnomLW'                : [-1, wx.NewId(), 'float'],
-                            'gnomSpot'              : ['', wx.NewId(), 'text'],
-                            'gnomExpt'              : [0, wx.NewId(), 'int'],
+                            'gnomExpertFile'        : ['', NewId(), 'text'],
+                            'gnomForceRminZero'     : ['Y', NewId(), 'choice'],
+                            'gnomForceRmaxZero'     : ['Y', NewId(), 'choice'],
+                            'gnomNPoints'           : [171, NewId(), 'int'],
+                            'gnomInitialAlpha'      : [0.0, NewId(), 'float'],
+                            'gnomAngularScale'      : [1, NewId(), 'int'],
+                            'gnomSystem'            : [0, NewId(), 'int'],
+                            'gnomFormFactor'        : ['', NewId(), 'text'],
+                            'gnomRadius56'          : [-1, NewId(), 'float'],
+                            'gnomRmin'              : [-1, NewId(), 'float'],
+                            'gnomFWHM'              : [-1, NewId(), 'float'],
+                            'gnomAH'                : [-1, NewId(), 'float'],
+                            'gnomLH'                : [-1, NewId(), 'float'],
+                            'gnomAW'                : [-1, NewId(), 'float'],
+                            'gnomLW'                : [-1, NewId(), 'float'],
+                            'gnomSpot'              : ['', NewId(), 'text'],
+                            'gnomExpt'              : [0, NewId(), 'int'],
 
                             #DAMMIF settings
-                            'dammifMode'            : ['Fast', wx.NewId(), 'choice'],
-                            'dammifSymmetry'        : ['P1', wx.NewId(), 'choice'],
-                            'dammifAnisometry'      : ['Unknown', wx.NewId(), 'choice'],
-                            'dammifUnit'            : ['Unknown', wx.NewId(), 'choice'],
-                            'dammifChained'         : [False, wx.NewId(), 'bool'],
-                            'dammifConstant'        : ['', wx.NewId(), 'text'],
-                            'dammifOmitSolvent'     : [True, wx.NewId(), 'bool'],
-                            'dammifDummyRadius'     : [-1, wx.NewId(), 'float'],
-                            'dammifSH'              : [-1, wx.NewId(), 'int'],
-                            'dammifPropToFit'       : [-1, wx.NewId(), 'float'],
-                            'dammifKnots'           : [-1, wx.NewId(), 'int'],
-                            'dammifCurveWeight'     : ['e', wx.NewId(), 'choice'],
-                            'dammifRandomSeed'      : ['', wx.NewId(), 'text'],
-                            'dammifMaxSteps'        : [-1, wx.NewId(), 'int'],
-                            'dammifMaxIters'        : [-1, wx.NewId(), 'int'],
-                            'dammifMaxStepSuccess'  : [-1, wx.NewId(), 'int'],
-                            'dammifMinStepSuccess'  : [-1, wx.NewId(), 'int'],
-                            'dammifTFactor'         : [-1, wx.NewId(), 'float'],
-                            'dammifRgPen'           : [-1, wx.NewId(), 'float'],
-                            'dammifCenPen'          : [-1, wx.NewId(), 'float'],
-                            'dammifLoosePen'        : [-1, wx.NewId(), 'float'],
-                            'dammifAnisPen'         : [-1, wx.NewId(), 'float'],
-                            'dammifMaxBeadCount'    : [-1, wx.NewId(), 'int'],
-                            'dammifReconstruct'     : [15, wx.NewId(), 'int'],
-                            'dammifDamaver'         : [True, wx.NewId(), 'bool'],
-                            'dammifDamclust'        : [False, wx.NewId(), 'bool'],
-                            'dammifRefine'          : [True, wx.NewId(), 'bool'],
-                            'dammifProgram'         : ['DAMMIF', wx.NewId(), 'choice'],
+                            'dammifMode'            : ['Fast', NewId(), 'choice'],
+                            'dammifSymmetry'        : ['P1', NewId(), 'choice'],
+                            'dammifAnisometry'      : ['Unknown', NewId(), 'choice'],
+                            'dammifUnit'            : ['Unknown', NewId(), 'choice'],
+                            'dammifChained'         : [False, NewId(), 'bool'],
+                            'dammifConstant'        : ['', NewId(), 'text'],
+                            'dammifOmitSolvent'     : [True, NewId(), 'bool'],
+                            'dammifDummyRadius'     : [-1, NewId(), 'float'],
+                            'dammifSH'              : [-1, NewId(), 'int'],
+                            'dammifPropToFit'       : [-1, NewId(), 'float'],
+                            'dammifKnots'           : [-1, NewId(), 'int'],
+                            'dammifCurveWeight'     : ['e', NewId(), 'choice'],
+                            'dammifRandomSeed'      : ['', NewId(), 'text'],
+                            'dammifMaxSteps'        : [-1, NewId(), 'int'],
+                            'dammifMaxIters'        : [-1, NewId(), 'int'],
+                            'dammifMaxStepSuccess'  : [-1, NewId(), 'int'],
+                            'dammifMinStepSuccess'  : [-1, NewId(), 'int'],
+                            'dammifTFactor'         : [-1, NewId(), 'float'],
+                            'dammifRgPen'           : [-1, NewId(), 'float'],
+                            'dammifCenPen'          : [-1, NewId(), 'float'],
+                            'dammifLoosePen'        : [-1, NewId(), 'float'],
+                            'dammifAnisPen'         : [-1, NewId(), 'float'],
+                            'dammifMaxBeadCount'    : [-1, NewId(), 'int'],
+                            'dammifReconstruct'     : [15, NewId(), 'int'],
+                            'dammifDamaver'         : [True, NewId(), 'bool'],
+                            'dammifDamclust'        : [False, NewId(), 'bool'],
+                            'dammifRefine'          : [True, NewId(), 'bool'],
+                            'dammifProgram'         : ['DAMMIF', NewId(), 'choice'],
 
                             #DAMMIN settings that are not included in DAMMIF settings
-                            'damminInitial'         : ['S', wx.NewId(), 'choice'], #Initial DAM
-                            'damminKnots'           : [20, wx.NewId(), 'int'],
-                            'damminConstant'        : [0, wx.NewId(), 'float'],
-                            'damminDiameter'        : [-1, wx.NewId(), 'float'],
-                            'damminPacking'         : [-1, wx.NewId(), 'float'],
-                            'damminCoordination'    : [-1, wx.NewId(), 'float'],
-                            'damminDisconPen'       : [-1, wx.NewId(), 'float'],
-                            'damminPeriphPen'       : [-1, wx.NewId(), 'float'],
-                            'damminCurveWeight'     : ['1', wx.NewId(), 'choice'],
-                            'damminAnealSched'      : [-1, wx.NewId(), 'float'],
+                            'damminInitial'         : ['S', NewId(), 'choice'], #Initial DAM
+                            'damminKnots'           : [20, NewId(), 'int'],
+                            'damminConstant'        : [0, NewId(), 'float'],
+                            'damminDiameter'        : [-1, NewId(), 'float'],
+                            'damminPacking'         : [-1, NewId(), 'float'],
+                            'damminCoordination'    : [-1, NewId(), 'float'],
+                            'damminDisconPen'       : [-1, NewId(), 'float'],
+                            'damminPeriphPen'       : [-1, NewId(), 'float'],
+                            'damminCurveWeight'     : ['1', NewId(), 'choice'],
+                            'damminAnealSched'      : [-1, NewId(), 'float'],
 
                             #Weighted Average Settings
-                            'weightCounter'         : ['', wx.NewId(), 'choice'],
-                            'weightByError'         : [True, wx.NewId(), 'bool'],
+                            'weightCounter'         : ['', NewId(), 'choice'],
+                            'weightByError'         : [True, NewId(), 'bool'],
                             }
 
     def get(self, key):
@@ -349,9 +363,12 @@ def loadSettings(raw_settings, loadpath):
 
     file_obj = open(loadpath, 'rb')
     try:
-        loaded_param = cPickle.load(file_obj)
-    except (KeyError, EOFError, ImportError, IndexError, AttributeError, cPickle.UnpicklingError) as e:
-        print 'Error type: %s, error: %s' %(type(e).__name__, e)
+        try:
+            loaded_param = pickle.load(file_obj, encoding='latin1')  # python 3
+        except TypeError:
+            loaded_param = pickle.load(file_obj)  # python 2
+    except (KeyError, EOFError, ImportError, IndexError, AttributeError, pickle.UnpicklingError) as e:
+        print('Error type: %s, error: %s' %(type(e).__name__, e))
         file_obj.close()
         return False
     file_obj.close()
@@ -363,10 +380,10 @@ def loadSettings(raw_settings, loadpath):
         if each_key in all_params:
             all_params[each_key][0] = copy.copy(loaded_param[each_key])
         else:
-            print 'WARNING: ' + str(each_key) + " not found in RAWSettings."
+            print('WARNING: ' + str(each_key) + " not found in RAWSettings.")
 
-    main_frame = wx.FindWindowByName('MainFrame')
-    main_frame.queueTaskInWorkerThread('recreate_all_masks', None)
+    # main_frame = wx.FindWindowByName('MainFrame')
+    # main_frame.queueTaskInWorkerThread('recreate_all_masks', None)
 
     postProcess(raw_settings)
 
@@ -409,12 +426,12 @@ def postProcess(raw_settings):
     for item in change_list:
         text = text + message_dir[item] +'\n'
 
-    if len(change_list) > 0:
-        wx.CallAfter(wx.MessageBox, 'The following settings have been disabled because the appropriate directory/file could not be found:\n'+text+'\nIf you are using a config file from a different computer please go into Advanced Options to change the settings, or save you config file to avoid this message next time.', 'Load Settings Warning', style = wx.ICON_ERROR | wx.OK | wx.STAY_ON_TOP)
+    # if len(change_list) > 0:
+    #     wx.CallAfter(wx.MessageBox, 'The following settings have been disabled because the appropriate directory/file could not be found:\n'+text+'\nIf you are using a config file from a different computer please go into Advanced Options to change the settings, or save you config file to avoid this message next time.', 'Load Settings Warning', style = wx.ICON_ERROR | wx.OK | wx.STAY_ON_TOP)
 
-    if raw_settings.get('autoFindATSAS'):
-        main_frame = wx.FindWindowByName('MainFrame')
-        main_frame.findAtsas()
+    # if raw_settings.get('autoFindATSAS'):
+    #     main_frame = wx.FindWindowByName('MainFrame')
+    #     main_frame.findAtsas()
 
     return
 
@@ -440,9 +457,10 @@ def saveSettings(raw_settings, savepath):
 
     file_obj = open(savepath, 'wb')
     try:
-        cPickle.dump(save_dict, file_obj, cPickle.HIGHEST_PROTOCOL)
+        # cPickle.dump(save_dict, file_obj, cPickle.HIGHEST_PROTOCOL)
+        pickle.dump(save_dict, file_obj, protocol=2)
     except Exception as e:
-        print '<Error> type: %s, message: %s' %(type(e).__name__, e)
+        print('<Error> type: %s, message: %s' %(type(e).__name__, e))
         file_obj.close()
         return False
 
@@ -453,9 +471,10 @@ def saveSettings(raw_settings, savepath):
 
     FileObj = open(backup_file, 'wb')
     try:
-        cPickle.dump(save_dict, FileObj, cPickle.HIGHEST_PROTOCOL)
+        # pickle.dump(save_dict, FileObj, pickle.HIGHEST_PROTOCOL)
+        pickle.dump(save_dict, FileObj, protocol=2)
     except Exception as e:
-        print 'Error type: %s, error: %s' %(type(e).__name__, e)
+        print('Error type: %s, error: %s' %(type(e).__name__, e))
         FileObj.close()
         return False
     FileObj.close()

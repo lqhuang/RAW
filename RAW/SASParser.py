@@ -65,7 +65,7 @@ class PyMathParser(object):
             try:
                 val = float(var_dict[each_key])
                 self.variables[each_key] = val
-            except:
+            except Exception:
                 pass
 
     def addDefaultFunctions(self):

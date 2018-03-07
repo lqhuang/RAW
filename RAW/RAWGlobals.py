@@ -16,18 +16,31 @@
 #
 #******************************************************************************
 
-import Queue
+try:
+    import Queue as queue  # python 2
+except ModuleNotFoundError:
+    import queue  # python 3
 import sys
 import os
 
 global compiled_extensions
-compiled_extensions = True
+if sys.version_info < (3, 0):
+    try:
+        try:
+            import weave
+        except ModuleNotFoundError:
+            import scipy.weave as weave
+        compiled_extensions = True
+    except ModuleNotFoundError:
+        compiled_extensions = False
+else:
+    compiled_extensions = False
 
-global mainworker_cmd_queue
-mainworker_cmd_queue = Queue.Queue()
+# global mainworker_cmd_queue
+# mainworker_cmd_queue = queue.Queue()
 
-global cancel_bift
-cancel_bift = False
+# global cancel_bift
+# cancel_bift = False
 
 global workspace_saved
 workspace_saved = True

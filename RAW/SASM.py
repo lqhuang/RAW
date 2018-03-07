@@ -21,6 +21,7 @@ Created on Jul 5, 2010
 #
 #******************************************************************************
 '''
+from __future__ import division # TODO: check whether true division is right?
 
 import numpy as np
 import scipy.interpolate as interp
@@ -28,7 +29,7 @@ from scipy import integrate as integrate
 import os, copy
 import SASCalib, SASExceptions
 from math import pi, sin
-import wx
+# import wx
 
 class SASM:
     '''
@@ -229,7 +230,7 @@ class SASM:
     def getParameter(self, key):
         ''' Get parameter from parameters dict '''
 
-        if self._parameters.has_key(key):
+        if key in self._parameters:
             return self._parameters[key]
         else:
             return None
@@ -724,8 +725,8 @@ def postProcessImageSasm(sasm, raw_settings):
     if raw_settings.get('NormAbsWater'):
         try:
             normalizeAbsoluteScaleWater(sasm, raw_settings)
-        except SASExceptions.AbsScaleNormFailed, e:
-            print e
+        except SASExceptions.AbsScaleNormFailed as error:
+            print(error)
 
 def postProcessSasm(sasm, raw_settings):
 

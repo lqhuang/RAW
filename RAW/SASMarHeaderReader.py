@@ -28,7 +28,7 @@
 # Author: Soren Skou Nielsen
 ################################################################
 
-from __future__ import division
+from __future__ import print_function, division
 import struct
 import re
 
@@ -121,9 +121,9 @@ def readHeader(filename):
 
     d['min'] = fread(f, 'i')
     d['max'] = fread(f, 'i')
-    d['mean'] = fread(f, 'i')/1000
-    d['rms'] = fread(f, 'i')/1000
-    d['p10'] = fread(f, 'i')/1000
+    d['mean'] = int(fread(f, 'i')/1000)
+    d['rms'] = int(fread(f, 'i')/1000)
+    d['p10'] = int(fread(f, 'i')/1000)
     d['p90'] = fread(f, 'i')
     d['stats_uptodate'] = fread(f, 'i')
     d['pixel_noise'] = fread(f, 'i')
@@ -131,45 +131,45 @@ def readHeader(filename):
     d['reserve2'] = fread(f, 'i'*18)
     d['percentile'] = fread(f, 'h'*128)
 
-    d['xtal_to_detector'] = fread(f, 'i')/1000
-    d['beam_x'] = fread(f, 'i')/1000            #1000*x beam position (pixels)
-    d['beam_y'] = fread(f, 'i')/1000            #1000*x beam position (pixels)
-    d['integration_time'] = fread(f, 'i')/1000  # in seconds
-    d['exposure_time'] = fread(f, 'i')/1000     # in seconds
-    d['readout_time'] = fread(f, 'i')/1000      # in seconds
+    d['xtal_to_detector'] = int(fread(f, 'i')/1000)
+    d['beam_x'] = int(fread(f, 'i')/1000)            #1000*x beam position (pixels)
+    d['beam_y'] = int(fread(f, 'i')/1000)            #1000*x beam position (pixels)
+    d['integration_time'] = int(fread(f, 'i')/1000)  # in seconds
+    d['exposure_time'] = int(fread(f, 'i')/1000)     # in seconds
+    d['readout_time'] = int(fread(f, 'i')/1000)      # in seconds
     d['nreads'] = fread(f, 'i')
 
-    d['start_twotheta'] = fread(f, 'i')/1000
-    d['start_omega'] = fread(f, 'i')/1000
-    d['start_chi'] = fread(f, 'i')/1000
-    d['start_kappa'] = fread(f, 'i')/1000
-    d['start_phi'] = fread(f, 'i')/1000
-    d['start_delta'] = fread(f, 'i')/1000
-    d['start_gamma'] = fread(f, 'i')/1000
-    d['start_xtal_to_detector'] = fread(f, 'i')/1000
-    d['end_twotheta'] = fread(f, 'i')/1000
-    d['end_omega'] = fread(f, 'i')/1000
-    d['end_chi'] = fread(f, 'i')/1000
-    d['end_kappa'] = fread(f, 'i')/1000
-    d['end_phi'] = fread(f, 'i')/1000
-    d['end_delta'] = fread(f, 'i')/1000
-    d['end_gamma'] = fread(f, 'i')/1000
-    d['end_xtal_to_detector'] = fread(f, 'i')/1000
+    d['start_twotheta'] = int(fread(f, 'i')/1000)
+    d['start_omega'] = int(fread(f, 'i')/1000)
+    d['start_chi'] = int(fread(f, 'i')/1000)
+    d['start_kappa'] = int(fread(f, 'i')/1000)
+    d['start_phi'] = int(fread(f, 'i')/1000)
+    d['start_delta'] = int(fread(f, 'i')/1000)
+    d['start_gamma'] = int(fread(f, 'i')/1000)
+    d['start_xtal_to_detector'] = int(fread(f, 'i')/1000)
+    d['end_twotheta'] = int(fread(f, 'i')/1000)
+    d['end_omega'] = int(fread(f, 'i')/1000)
+    d['end_chi'] = int(fread(f, 'i')/1000)
+    d['end_kappa'] = int(fread(f, 'i')/1000)
+    d['end_phi'] = int(fread(f, 'i')/1000)
+    d['end_delta'] = int(fread(f, 'i')/1000)
+    d['end_gamma'] = int(fread(f, 'i')/1000)
+    d['end_xtal_to_detector'] = int(fread(f, 'i')/1000)
 
-    d['rotation_axis'] = fread(f, 'i')/1000
-    d['rotation_range'] = fread(f, 'i')/1000
-    d['detector_rotx'] = fread(f, 'i')/1000
-    d['detector_roty'] = fread(f, 'i')/1000
-    d['detector_rotz'] = fread(f, 'i')/1000
+    d['rotation_axis'] = int(fread(f, 'i')/1000)
+    d['rotation_range'] = int(fread(f, 'i')/1000)
+    d['detector_rotx'] = int(fread(f, 'i')/1000)
+    d['detector_roty'] = int(fread(f, 'i')/1000)
+    d['detector_rotz'] = int(fread(f, 'i')/1000)
 
     d['reserve3'] = fread(f, 'c'*16)
 
     d['detector_type'] = fread(f, 'i')
-    d['pixelsize_x'] = fread(f, 'i')/1000
-    d['pixelsize_y'] = fread(f, 'i')/1000
-    d['mean_bias'] = fread(f, 'i')/1000
+    d['pixelsize_x'] = int(fread(f, 'i')/1000)
+    d['pixelsize_y'] = int(fread(f, 'i')/1000)
+    d['mean_bias'] = int(fread(f, 'i')/1000)
     d['photons_per_100adu'] = fread(f, 'i')
-    d['measured_bias'] = fread(f, 'i')/1000
+    d['measured_bias'] = int(fread(f, 'i')/1000)
     d['measured_temperature'] = fread(f, 'i')
     d['measured_pressure'] = fread(f, 'i')
 
@@ -191,7 +191,7 @@ def readHeader(filename):
     d['optics_type'] = fread(f, 'i')
     d['optics_dx'] = fread(f, 'i')
     d['optics_dy'] = fread(f, 'i')
-    d['optics_wavelength'] = fread(f, 'i')/1000;  # was microns
+    d['optics_wavelength'] = int(fread(f, 'i')/1000);  # was microns
     d['optics_dispersion'] = fread(f, 'i')
     d['optics_crossfire_x'] = fread(f, 'i')
     d['optics_crossfire_y'] = fread(f, 'i')
@@ -273,7 +273,7 @@ def readHeader(filename):
     d.pop('optics_type')
     d.pop('optics_dx')
     d.pop('optics_dy')
-    #d.pop('optics_wavelength') = fread(f, 'i')/1000;  # was microns
+    #d.pop('optics_wavelength') = int(fread(f, 'i')/1000);  # was microns
     d.pop('optics_dispersion')
     d.pop('optics_crossfire_x')
     d.pop('optics_crossfire_y')
@@ -340,23 +340,23 @@ def ParseDatasetComments(d):
 
     try:
         d['ic'] = float(icpattern.search(comments).group().split('=')[1])
-    except Exception, msg:
-        print 'ERROR reading headervalue "IC": ', str(msg)
+    except Exception as msg:
+        print('ERROR reading headervalue "IC": ', str(msg))
 
     try:
         d['bsd'] = float(bsdpattern.search(comments).group().split('=')[1])
-    except Exception, msg:
-        print 'ERROR reading headervalue "BSD": ', str(msg)
+    except Exception as msg:
+        print('ERROR reading headervalue "BSD": ', str(msg))
 
     try:
         d['before'] = float(beforepattern.search(comments).group().split('=')[1])
-    except Exception, msg:
-        print 'ERROR reading headervalue "BEFORE": ', str(msg)
+    except Exception as msg:
+        print('ERROR reading headervalue "BEFORE": ', str(msg))
 
     try:
         d['after'] = float(afterpattern.search(comments).group().split('=')[1])
-    except Exception, msg:
-        print 'ERROR reading headervalue "AFTER": ', str(msg)
+    except Exception as msg:
+        print('ERROR reading headervalue "AFTER": ', str(msg))
 
     #d['temp'] = temppattern.search(comments).group().split('=')[1].strip(';')
 
@@ -376,24 +376,24 @@ class NotTiffException(Exception):
 if __name__ == "__main__":
 
     filename = '/home/specuser/workspace/TestDrivenRaw/src/Tests/TestData/MaxlabMarCCD165.tif'
-
+    filename = '/Users/lqhuang/Documents/CSRC/Data/SSRF-MagR-201711/Data/20171110/EXP16/Data/buffer_00019.tif'
     d = readHeader(filename)
 
-    print "testing headerReader.py on " + filename + "...."
+    print("testing headerReader.py on " + filename + "....")
     print
 
-    print "filename:", d['filename']
-    print "Exposure time:" , d['exposure_time']
-    print "Data comment:", d['dataset_comments']
-    print ''
-    print 'before:',d['before']
-    print 'after:', d['after']
-    #print 'vacuum:', d['vacuum']
-    print 'ic:', d['ic']
-    print 'bsd:',d['bsd']
-    #print 'temp:' ,d['temp']
+    print("filename:", d['filename'])
+    print("Exposure time:" , d['exposure_time'])
+    print("Data comment:", d['dataset_comments'])
+    print('')
+    print('before:',d['before'])
+    print('after:', d['after'])
+    #print('vacuum:', d['vacuum'])
+    print('ic:', d['ic'])
+    print('bsd:',d['bsd'])
+    #print('temp:' ,d['temp'])
 
-    print d
+    print(d)
 
 
 

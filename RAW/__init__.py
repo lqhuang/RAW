@@ -1,2 +1,2 @@
-NAME = 'RAW'
-VERSION = '1.2.2'
+__NAME__ = 'RAW'
+__VERSION__ = '1.2.2'

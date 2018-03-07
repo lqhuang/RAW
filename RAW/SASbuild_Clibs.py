@@ -16,6 +16,7 @@
 #
 #******************************************************************************
 
+from __future__ import print_function, division
 
 try:
     from weave import ext_tools, converters, build_tools
@@ -30,7 +31,7 @@ temp_dir = os.path.join(workdir, 'temp')
 
 def build_radavg():
 
-    print 'Compiling ravg_ext...'
+    print('Compiling ravg_ext...')
 
     mod = ext_tools.ext_module('ravg_ext')
 
@@ -330,11 +331,11 @@ def build_radavg():
                                               verbose = 0, **kw)
 
     if success:
-        print '\n****** ravg_ext module compiled succesfully! *********\n'
+        print('\n****** ravg_ext module compiled succesfully! *********\n')
 
 
 def build_testCode():
-    print 'Compiling testmodule...'
+    print('Compiling testmodule...')
 
     tst = np.ones(30, dtype = np.long)
 
@@ -546,13 +547,13 @@ def build_testCode():
                                               verbose = 0, **kw)
 
     if success:
-        print '\n****** test module compiled succesfully! *********\n'
+        print('\n****** test module compiled succesfully! *********\n')
     else:
-        print '\n****** test module failed! *********\n'
+        print('\n****** test module failed! *********\n')
 
 
 def build_polygonmask():
-    print 'Compiling polymask_ext...'
+    print('Compiling polymask_ext...')
 
     verts = np.array([[549.,1096.],[144.,51.],[989.,38.],[549.,1096.]])
     points = np.array([[0, 0],[0, 1],[0, 2]])
@@ -631,7 +632,7 @@ def build_polygonmask():
                                               verbose = 0, **kw)
 
     if success:
-        print '\n****** polymask_ext module compiled succesfully! *********\n'
+        print('\n****** polymask_ext module compiled succesfully! *********\n')
 
 
 def buildAll():
@@ -640,19 +641,19 @@ def buildAll():
         #workdir = os.getcwd()
         workdir = sys.path[0]
         os.mkdir(os.path.join(workdir, 'temp'))
-    except:
+    except Exception:
         pass
     try:
         build_testCode()
-    except Exception, e:
-        print e
-        print 'Failed to compile test code!'
+    except Exception as error:
+        print(error)
+        print('Failed to compile test code!')
 
         try:
             shutil.rmtree('./temp/')
             os.remove('./test_ext.cpp')
-        except Exception, e:
-            print 'Cleanup failed : ', e
+        except Exception as error:
+            print('Cleanup failed : ', error)
 
         return
 
@@ -661,49 +662,49 @@ def buildAll():
         build_radavg()
         build_polygonmask()
         # build_transmatrix()
-        build_bift()
+        # build_bift()
         # build_TridiagonalSolve()
         # build_sinfouriermatrix()
-        build_packc()
-    except Exception, e:
-        print e
-        print 'Failed to compile extensions ravg, polygonmask, bift!'
+        # build_packc()
+    except Exception as error:
+        print(error)
+        print('Failed to compile extensions ravg, polygonmask, bift!')
 
         try:
             shutil.rmtree('./temp/')
-            os.remove('./bift_ext.cpp')
+            # os.remove('./bift_ext.cpp')
             os.remove('./ravg_ext.cpp')
             # os.remove('./sinefouriermatrix_ext.cpp')
             # os.remove('./transmatrix_ext.cpp')
             # os.remove('./tridiagsolve_ext.cpp')
             os.remove('./polygonmask_ext.cpp')
-            os.remove('./packc_ext.cpp')
+            # os.remove('./packc_ext.cpp')
             os.remove('./test_ext.cpp')
-        except Exception, e:
-            print 'Cleanup failed : ', e
+        except Exception as error:
+            print('Cleanup failed : ', error)
 
         return
 
 
-    print ''
-    print '*********** Cleaning Up *****************'
+    print('')
+    print('*********** Cleaning Up *****************')
 
     ## Clean up:
 
     try:
         shutil.rmtree('./temp/')
-        os.remove('./bift_ext.cpp')
+        # os.remove('./bift_ext.cpp')
         os.remove('./ravg_ext.cpp')
         # os.remove('./sinefouriermatrix_ext.cpp')
         # os.remove('./transmatrix_ext.cpp')
         # os.remove('./tridiagsolve_ext.cpp')
         os.remove('./polygonmask_ext.cpp')
         os.remove('./test_ext.cpp')
-    except Exception, e:
-        print 'Cleanup failed : ', e
+    except Exception as error:
+        print('Cleanup failed : ', error)
 
-    print ''
-    print '*********** ALL DONE!!! *****************'
+    print('')
+    print('*********** ALL DONE!!! *****************')
 
     #sys.exit()
     return
