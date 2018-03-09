@@ -27,9 +27,15 @@ functions, including calculation of rg and molecular weight.
 
 
 """
+from __future__ import print_function
+
 import numpy as np
 from scipy import integrate as integrate
-import os, time, subprocess, scipy.optimize, wx, threading, Queue, platform
+import os, time, subprocess, scipy.optimize, threading, platform
+try:
+    import Queue as queue  # python 2
+except ModuleNotFoundError:
+    import queue  # python 3
 
 import SASFileIO, SASExceptions, RAWSettings
 
@@ -86,16 +92,16 @@ def autoRg(sasm):
     #It is very time consuming to search every possible window size and every possible starting point.
     #Here we define a subset to search.
     tot_points = max_window
-    window_step = tot_points/10
-    data_step = tot_points/50
+    window_step = int(tot_points/10)
+    data_step = int(tot_points/50)
 
     if window_step == 0:
         window_step =1
     if data_step ==0:
         data_step =1
 
-    window_list = range(min_window,max_window, window_step)
-    window_list.append(max_window)
+    window_list = np.arange(min_window, max_window + window_step, window_step)
+    # window_list.append(max_window)
 
 
     #This function takes every window size in the window list, stepts it through the data range, and
@@ -193,7 +199,7 @@ def autoRg(sasm):
             scores = np.array([qmaxrg_score, qminrg_score, rg_frac_err_score, i0_frac_err_score, r_sqr_score,
                                reduced_chi_sqr_score, window_size_score])
 
-            # print scores
+            # print(scores)
 
             total_score = (weights*scores).sum()/weights.sum()
 
@@ -218,7 +224,7 @@ def autoRg(sasm):
             #     #data at some point.
             #     rger2 = fit_list[:,4][quality>quality[idx]-.1].std()
             #     rger = rger1 + rger2
-            # except:
+            # except Exception:
             #     rger = rger1
             try:
                 idx = quality.argmax()
@@ -228,7 +234,7 @@ def autoRg(sasm):
                 i0er = fit_list[:,7][quality>quality[idx]-.1].std()
                 idx_min = int(fit_list[idx,0])
                 idx_max = int(fit_list[idx,0]+fit_list[idx,1]-1)
-            except:
+            except Exception:
                 idx = quality.argmax()
                 rg = fit_list[idx,4]
                 rger = fit_list[idx,5]
@@ -455,7 +461,7 @@ def runGnom(fname, outname, dmax, args, new_gnom = False):
 
             else:
 
-                gnom_q = Queue.Queue()
+                gnom_q = queue.Queue()
 
                 proc = subprocess.Popen('%s' %(gnomDir), shell=True, stdin = subprocess.PIPE, stdout = subprocess.PIPE, stderr = subprocess.STDOUT)
                 gnom_t = threading.Thread(target=enqueue_output, args=(proc.stdout, gnom_q))
@@ -471,7 +477,7 @@ def runGnom(fname, outname, dmax, args, new_gnom = False):
                         data = gnom_q.get_nowait()
                         data = data[0]
                         gnom_q.task_done()
-                    except Queue.Empty:
+                    except queue.Empty:
                         pass
 
                     if data != None:
@@ -675,21 +681,21 @@ def runGnom(fname, outname, dmax, args, new_gnom = False):
         if cfg:
             try:
                 os.remove(os.path.join(datadir, 'gnom.cfg'))
-            except Exception as e:
-                print e
-                print 'GNOM cleanup failed to delete gnom.cfg!'
+            except Exception as error:
+                print(error)
+                print('GNOM cleanup failed to delete gnom.cfg!')
 
         if not new_gnom:
             try:
                 os.remove(os.path.join(datadir, 'kern.bin'))
-            except Exception as e:
-                print e
-                print 'GNOM cleanup failed to delete kern.bin!'
+            except Exception as error:
+                print(error)
+                print('GNOM cleanup failed to delete kern.bin!')
 
         return iftm
 
     else:
-        print 'Cannot find ATSAS'
+        print('Cannot find ATSAS')
         raise SASExceptions.NoATSASError('Cannot find gnom.')
         return None
 
@@ -739,7 +745,7 @@ def runDatgnom(datname, sasm):
 
                     output, error = process.communicate()
             else:
-                # print 'No Dmax found, trying datgnom without an rg input'
+                # print('No Dmax found, trying datgnom without an rg input')
                 process=subprocess.Popen('%s %s -o %s' %(datgnomDir, datname, outname), stdout=subprocess.PIPE,stderr=subprocess.PIPE,shell=True)
 
                 output, error = process.communicate()
@@ -748,15 +754,15 @@ def runDatgnom(datname, sasm):
 
 
         if error == 'Cannot define Dmax' or error=='Could not find Rg' or error=='No intensity values (positive) found' or error == 'LOADATF --E- No data lines recognized.':
-            print 'Unable to run datgnom successfully'
+            print('Unable to run datgnom successfully')
             datgnom_success = False
         # elif error != None:
         #     datgnom_success = False
         else:
             datgnom_success = True
 
-        # print 'DATGNOM output:'
-        # print output
+        # print('DATGNOM output:')
+        # print(output)
 
         if datgnom_success:
             iftm=SASFileIO.loadOutFile(outname)[0]
@@ -766,14 +772,14 @@ def runDatgnom(datname, sasm):
         if os.path.isfile(outname):
             try:
                 os.remove(outname)
-            except Exception, e:
-                print e
-                print 'DATGNOM cleanup failed to remove the .out file!'
+            except Exception as error:
+                print(error)
+                print('DATGNOM cleanup failed to remove the .out file!')
 
         return iftm
 
     else:
-        print 'Cannot find ATSAS'
+        print('Cannot find ATSAS')
         raise SASExceptions.NoATSASError('Cannot find datgnom.')
 
 
@@ -909,7 +915,7 @@ def runDammif(fname, prefix, args):
                         queue.put_nowait([line2])
                         line2=''
 
-            dammif_q = Queue.Queue()
+            dammif_q = queue.Queue()
 
             dammifStarted = False
 
@@ -926,18 +932,18 @@ def runDammif(fname, prefix, args):
                 try:
                     data = dammif_q.get_nowait()
                     data = data[0]
-                    # print 'New Line of Data!!!!!!!!!!!!!!!!!!!'
-                    # print data
+                    # print('New Line of Data!!!!!!!!!!!!!!!!!!!')
+                    # print(data)
                     dammif_q.task_done()
                     # err = q2.get_nowait()
-                    # print data[0],
-                    # print err
-                except Queue.Empty:
+                    # print(data[0],)
+                    # print(err)
+                except queue.Empty:
                     pass
 
                 if data != None:
                     current_line = data
-                    # print 'Previous line: %s' %(previous_line)
+                    # print('Previous line: %s' %(previous_line))
                     if data.find('GNOM output file to read?') > -1:
                         proc.stdin.write('%s\r\n' %(fname)) #Dammif input file, no default
 
@@ -1067,7 +1073,7 @@ def runDammif(fname, prefix, args):
 
             return proc
     else:
-        print 'Cannot find ATSAS'
+        print('Cannot find ATSAS')
         raise SASExceptions.NoATSASError('Cannot find dammif.')
         return None
 
@@ -1126,7 +1132,7 @@ def runAmbimeter(fname, prefix, args):
         return ambiCats, ambiScore, ambiEval
 
     else:
-        print 'Cannot find ATSAS'
+        print('Cannot find ATSAS')
         raise SASExceptions.NoATSASError('Cannot find ambimeter.')
         return None
 
@@ -1212,7 +1218,7 @@ def runDammin(fname, prefix, args):
                             line2=''
 
 
-            dammif_q = Queue.Queue()
+            dammif_q = queue.Queue()
 
             dammifStarted = False
 
@@ -1229,18 +1235,18 @@ def runDammin(fname, prefix, args):
                 try:
                     data = dammif_q.get_nowait()
                     data = data[0]
-                    # print 'New Line of Data!!!!!!!!!!!!!!!!!!!'
-                    # print data
+                    # print('New Line of Data!!!!!!!!!!!!!!!!!!!')
+                    # print(data)
                     dammif_q.task_done()
                     # err = q2.get_nowait()
-                    # print data[0],
-                    # print err
-                except Queue.Empty:
+                    # print(data[0],)
+                    # print(err)
+                except queue.Empty:
                     pass
 
                 if data != None:
                     current_line = data
-                    # print 'Previous line: %s' %(previous_line)
+                    # print('Previous line: %s' %(previous_line))
 
                     if data.find('[E]xpert') > -1:
                         if args['mode'] == 'Refine':
@@ -1291,7 +1297,7 @@ def runDammin(fname, prefix, args):
 
                     elif data.find('automatic subtraction') > -1:
                         if 'damminConstant' in args:
-                            print 'setting constant to %f' %(args['damminConstant'])
+                            print('setting constant to %f' %(args['damminConstant']))
                             proc.stdin.write('%f\r\n' %(args['damminConstant'])) #Subtract constant offset, default automatic
                         else:
                             proc.stdin.write('\r\n')
@@ -1399,6 +1405,6 @@ def runDammin(fname, prefix, args):
 
             return proc
     else:
-        print 'Cannot find ATSAS'
+        print('Cannot find ATSAS')
         raise SASExceptions.NoATSASError('Cannot find dammif.')
         return None
