@@ -605,7 +605,7 @@ class IFTM(SASM):
     def getParameter(self, key):
         ''' Get parameter from parameters dict '''
 
-        if self._parameters.has_key(key):
+        if key in self._parameters:
             return self._parameters[key]
         else:
             return None
@@ -705,7 +705,7 @@ class SECM:
 
         if len(self._sasm_list) != len(self._frame_list_raw):
             self._frame_list_raw=np.arange(len(self._sasm_list))
-            print 'Warning: Incorrect frame number input to SECM object. Using default frame numbers.'
+            print('Warning: Incorrect frame number input to SECM object. Using default frame numbers.')
 
         self.frame_list = self._frame_list_raw.copy()
 
@@ -804,7 +804,7 @@ class SECM:
 
         if len(self._sasm_list) != len(self._frame_list_raw):
             self._frame_list_raw=np.arange(len(self._sasm_list))
-            print 'Warning: Incorrect frame number input to SECM object. Using default frame numbers.'
+            print('Warning: Incorrect frame number input to SECM object. Using default frame numbers.')
 
         self.frame_list = self._frame_list_raw.copy()
 
@@ -845,17 +845,17 @@ class SECM:
             closest = lambda qlist: np.argmin(np.absolute(qlist-self.qref))
 
             for sasm in sasm_list:
-                # print 'in sasm_list loop'
+                # print('in sasm_list loop')
                 q = sasm.q
                 index = closest(q)
-                # print index
+                # print(index)
                 intensity = sasm.i[index]
-                # print intensity
+                # print(intensity)
                 I_of_q.append(intensity)
 
             self.I_of_q.extend(I_of_q)
 
-        # print self.time
+        # print(self.time)
 
         self._update()
 
@@ -904,7 +904,7 @@ class SECM:
 
             if len(np.where(self.frame_list == final_frame)[0]) == 0:
                 index2 = len(self.frame_list)
-                print 'Warning: Final frame not in data set'
+                print('Warning: Final frame not in data set')
             else:
                 index2 = np.where(self.frame_list == final_frame)[0][0]
 
@@ -1043,19 +1043,19 @@ class SECM:
         return self._sasm_list[index]
 
     def I(self, qref):
-        # print 'in I(q)'
+        # print('in I(q)')
         self.qref=float(qref)
         self.I_of_q = []
 
         closest = lambda qlist: np.argmin(np.absolute(qlist-self.qref))
 
         for sasm in self._sasm_list:
-            # print 'in sasm_list loop'
+            # print('in sasm_list loop')
             q = sasm.q
             index = closest(q)
-            # print index
+            # print(index)
             intensity = sasm.i[index]
-            # print intensity
+            # print(intensity)
             self.I_of_q.append(intensity)
 
         return self.I_of_q
@@ -1072,10 +1072,10 @@ class SECM:
             self.mol_type = mol_type
             self.threshold = threshold
 
-        # print self.initial_buffer_frame
-        # print self.final_buffer_frame
-        # print self.window_size
-        # print new
+        # print(self.initial_buffer_frame)
+        # print(self.final_buffer_frame)
+        # print(self.window_size)
+        # print(new)
 
         return new
 
@@ -1117,8 +1117,8 @@ class SECM:
         return self.i0_list, self.i0er_list
 
     def appendRgAndI0(self, rg, rger, i0, i0er, first_frame, window_size):
-        index1 = first_frame+(window_size-1)/2
-        index2 = (window_size-1)/2
+        index1 = int(first_frame+(window_size-1)/2)
+        index2 = int((window_size-1)/2)
 
         self.rg_list = np.concatenate((self.rg_list[:index1],rg[index2:]))
         self.rger_list = np.concatenate((self.rger_list[:index1],rger[index2:]))
@@ -1127,8 +1127,8 @@ class SECM:
 
 
     def appendMW(self, mw, mwer, first_frame, window_size):
-        index1 = first_frame+(window_size-1)/2
-        index2 = (window_size-1)/2
+        index1 = int(first_frame+(window_size-1)/2)
+        index2 = int((window_size-1)/2)
 
         self.mw_list = np.concatenate((self.mw_list[:index1], mw[index2:]))
         self.mwer_list = np.concatenate((self.mwer_list[:index1], mwer[index2:]))
@@ -1181,8 +1181,8 @@ def subtract(sasm1, sasm2, forced = False):
 
             q = copy.deepcopy(q1[q1_idx1:q1_idx2])
 
-            # print i
-            # print q
+            # print(i)
+            # print(q)
 
         else:
             q1space=q1[1]-q1[0]

@@ -269,11 +269,13 @@ def autoRg(sasm):
     return rg, rger, i0, i0er, idx_min, idx_max
 
 
-def autoMW(sasm, rg, i0, protein = True):
+def autoMW(sasm, rg, i0, protein = True, raw_settings = None):
     #using the rambo tainer 2013 method for molecular mass.
     #Need to properly calculater error!
 
-    raw_settings = wx.FindWindowByName('MainFrame').raw_settings
+    # raw_settings = wx.FindWindowByName('MainFrame').raw_settings
+    if raw_settings is None:
+        raise ValueError('Please specify raw_settings')
 
     q = sasm.q
     i = sasm.i
@@ -346,7 +348,7 @@ def porodVolume(sasm, rg, i0, start = 0, stop = -1, interp = False):
     return pVolume
 
 
-def runGnom(fname, outname, dmax, args, new_gnom = False):
+def runGnom(fname, outname, dmax, args, new_gnom = False, raw_settings = None):
     #This function runs GNOM from the atsas package. It can do so without writing a GNOM cfg file.
     #It takes as input the filename to run GNOM on, the output name from the GNOM file, the dmax to evaluate
     #at, and a dictionary of arguments, which can be used to set the optional GNOM arguments.
@@ -409,7 +411,9 @@ def runGnom(fname, outname, dmax, args, new_gnom = False):
         else:
             use_cmd_line = False
 
-    raw_settings = wx.FindWindowByName('MainFrame').raw_settings
+    # raw_settings = wx.FindWindowByName('MainFrame').raw_settings
+    if raw_settings is None:
+        raise ValueError('Please specify raw_settings.')
     atsasDir = raw_settings.get('ATSASDir')
 
     opsys = platform.system()
@@ -433,7 +437,11 @@ def runGnom(fname, outname, dmax, args, new_gnom = False):
                 os.remove(os.path.join(datadir, 'gnom.cfg'))
 
             if new_gnom and use_cmd_line:
-                cmd = '%s --rmax=%s --output=%s --nr=%s' %(gnomDir, str(dmax), outname, str(args['npts']))
+                # --nr=<N> number of points in real space (default: automatic)
+                if args['npts'] == 0:
+                    cmd = '%s --rmax=%s --output=%s' %(gnomDir, str(dmax), outname)
+                else:
+                    cmd = '%s --rmax=%s --output=%s --nr=%s' %(gnomDir, str(dmax), outname, str(args['npts']))
 
                 if 'system' in changed:
                     cmd = cmd+' --system=%s' %(str(args['system']))
@@ -700,17 +708,16 @@ def runGnom(fname, outname, dmax, args, new_gnom = False):
         return None
 
 
-def runDatgnom(datname, sasm):
+def runDatgnom(datname, sasm, raw_settings):
     #This runs the ATSAS package DATGNOM program, to automatically find the Dmax and P(r) function
     #of a scattering profile.
     analysis = sasm.getParameter('analysis')
     if 'guinier' in analysis:
-        rg = float(analysis['guinier']['Rg'])
+        rg = float(analysis['guinier']['Rg'][0]) # TODO: [0]?
     else:
         rg = -1
 
-
-    raw_settings = wx.FindWindowByName('MainFrame').raw_settings
+    # raw_settings = wx.FindWindowByName('MainFrame').raw_settings
     atsasDir = raw_settings.get('ATSASDir')
 
     opsys = platform.system()
@@ -865,13 +872,13 @@ def writeGnomCFG(fname, outname, dmax, args):
     f.close()
 
 
-def runDammif(fname, prefix, args):
+def runDammif(fname, prefix, args, raw_settings):
     #Note: This run dammif command must be run with the current working directory as the directory
     #where the file is located. Otherwise, there are issues if the filepath contains a space.
 
     fname = os.path.split(fname)[1]
 
-    raw_settings = wx.FindWindowByName('MainFrame').raw_settings
+    # raw_settings = wx.FindWindowByName('MainFrame').raw_settings
     atsasDir = raw_settings.get('ATSASDir')
 
     opsys = platform.system()
@@ -1078,9 +1085,8 @@ def runDammif(fname, prefix, args):
         return None
 
 
-def runDamaver(flist):
-
-    raw_settings = wx.FindWindowByName('MainFrame').raw_settings
+def runDamaver(flist, raw_settings):
+    # raw_settings = wx.FindWindowByName('MainFrame').raw_settings
     atsasDir = raw_settings.get('ATSASDir')
 
     opsys = platform.system()
@@ -1101,8 +1107,8 @@ def runDamaver(flist):
 
         return process
 
-def runAmbimeter(fname, prefix, args):
-    raw_settings = wx.FindWindowByName('MainFrame').raw_settings
+def runAmbimeter(fname, prefix, args, raw_settings):
+    # raw_settings = wx.FindWindowByName('MainFrame').raw_settings
     atsasDir = raw_settings.get('ATSASDir')
 
     opsys = platform.system()
@@ -1136,9 +1142,8 @@ def runAmbimeter(fname, prefix, args):
         raise SASExceptions.NoATSASError('Cannot find ambimeter.')
         return None
 
-def runDamclust(flist):
-
-    raw_settings = wx.FindWindowByName('MainFrame').raw_settings
+def runDamclust(flist, raw_settings):
+    # raw_settings = wx.FindWindowByName('MainFrame').raw_settings
     atsasDir = raw_settings.get('ATSASDir')
 
     opsys = platform.system()
@@ -1160,13 +1165,13 @@ def runDamclust(flist):
         return process
 
 
-def runDammin(fname, prefix, args):
+def runDammin(fname, prefix, args, raw_settings):
     #Note: This run dammin command must be run with the current working directory as the directory
     #where the file is located. Otherwise, there are issues if the filepath contains a space.
 
     fname = os.path.split(fname)[1]
 
-    raw_settings = wx.FindWindowByName('MainFrame').raw_settings
+    # raw_settings = wx.FindWindowByName('MainFrame').raw_settings
     atsasDir = raw_settings.get('ATSASDir')
 
     opsys = platform.system()
