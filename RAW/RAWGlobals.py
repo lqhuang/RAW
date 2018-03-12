@@ -16,10 +16,10 @@
 #
 #******************************************************************************
 
-try:
-    import Queue as queue  # python 2
-except ModuleNotFoundError:
-    import queue  # python 3
+# try:
+#     import Queue as queue  # python 2
+# except ModuleNotFoundError:
+#     import queue  # python 3
 import sys
 import os
 

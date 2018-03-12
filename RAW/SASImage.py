@@ -22,7 +22,7 @@ Created on Jul 7, 2010
 #******************************************************************************
 '''
 
-from __future__ import print_function
+from __future__ import print_function, division  # TODO: check whether true division is right?
 
 import numpy as np
 from scipy import optimize
@@ -341,7 +341,7 @@ def calibrateAndNormalize(sasm_list, img_list, raw_settings):
     calibrate_check = raw_settings.get('CalibrateMan')
     enable_normalization = raw_settings.get('EnableNormalization')
 
-    pixel_size = int(pixel_size / 1000)
+    pixel_size = pixel_size / 1000.0
 
     if type(sasm_list) != list:
         sasm_list = [sasm_list]
@@ -369,7 +369,7 @@ def calibrateAndNormalize(sasm_list, img_list, raw_settings):
 
         if calibrate_check:
             sasm.calibrateQ(sd_distance, pixel_size, wavelength)
-
+            
         normlist = raw_settings.get('NormalizationList')
         img_hdr = sasm.getParameter('imageHeader')
         file_hdr = sasm.getParameter('counters')

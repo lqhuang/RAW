@@ -27,7 +27,7 @@ functions, including calculation of rg and molecular weight.
 
 
 """
-from __future__ import print_function
+from __future__ import print_function, division
 
 import numpy as np
 from scipy import integrate as integrate
