@@ -23,13 +23,19 @@ Created on Jul 5, 2010
 '''
 from __future__ import division # TODO: check whether true division is right?
 
+import os, sys, copy
+from math import pi, sin
+
+# import wx
 import numpy as np
 import scipy.interpolate as interp
 from scipy import integrate as integrate
-import os, copy
+
+RAW_DIR = os.path.dirname(os.path.abspath(__file__))
+if RAW_DIR not in sys.path:
+    sys.path.append(RAW_DIR)
 import SASCalib, SASExceptions
-from math import pi, sin
-# import wx
+
 
 class SASM:
     '''

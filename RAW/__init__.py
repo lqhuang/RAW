@@ -1,5 +1,12 @@
 from __future__ import print_function, division
 
+# dirty hack solution for pickle compatibility problem
+import os
+import sys
+
+RAW_DIR = os.path.dirname(os.path.abspath(__file__))
+if RAW_DIR not in sys.path:
+    sys.path.append(RAW_DIR)
 from .RAWWrapper import RAWSimulator
 from .RAWAnalysisWrapper import RAWAnalysisSimulator
 from . import SASM

@@ -7,6 +7,9 @@ import glob
 
 import numpy as np
 
+RAW_DIR = os.path.dirname(os.path.abspath(__file__))
+if RAW_DIR not in sys.path:
+    sys.path.append(RAW_DIR)
 import RAWSettings
 import SASM
 import SASFileIO
@@ -89,6 +92,9 @@ class RAWSimulator():
 
     def get_raw_settings(self):
         return self._raw_settings
+
+    def get_raw_settings_value(self, key):
+        return self._raw_settings.get(key)
 
     def get_stdout(self):
         return self._stdout
@@ -232,6 +238,56 @@ class RAWSimulator():
             raise error
 
         return sasm_list
+
+    def loadIFTMs(self, filename_list):
+        """Load GNOM .ift/.out files."""
+        print('Please wait while loading files...', file=self._stdout)
+        iftm_list = []
+
+        try:
+            for each_filename in filename_list:
+                file_ext = os.path.splitext(each_filename)[1]
+
+                if file_ext == '.ift' or file_ext == '.out':
+                    iftm, _ = SASFileIO.loadFile(each_filename,
+                                                 self._raw_settings)
+
+                    if file_ext == '.ift':
+                        item_colour = 'blue'
+                    else:
+                        item_colour = 'black'
+
+                    if isinstance(iftm, list):
+                        iftm_list.extend(iftm)
+                    else:
+                        iftm_list.append(iftm)
+
+        except (SASExceptions.UnrecognizedDataFormat,
+                SASExceptions.WrongImageFormat) as error:
+            self.error_printer.showDataFormatError(
+                os.path.split(each_filename)[1])
+            raise error
+        except SASExceptions.HeaderLoadError as error:
+            print(
+                str(error),
+                'Error Loading Headerfile:'
+                'Please check that the header file is in the directory with the data.',
+                file=self._stdout)
+            raise error
+        except SASExceptions.MaskSizeError as error:
+            print(
+                str(error),
+                'Saved mask does not fit loaded image',
+                file=self._stdout)
+            raise error
+        except SASExceptions.HeaderMaskLoadError as error:
+            print(
+                str(error),
+                'Mask information was not found in header',
+                file=self._stdout)
+            raise error
+
+        return iftm_list
 
     def superimposeSASMs(self, marked_sasm, selected_sasms):
         """Superimpose seleceted sasms with marked sasm."""

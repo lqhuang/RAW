@@ -31,10 +31,14 @@ except ImportError:
     print('RAW WARNING: hdf5plugin not present, Eiger hdf5 images will not load.')
     use_eiger = False
 
-import RAWGlobals, SASImage, SASM, SASExceptions
-import numpy as np
 import os, sys, re, time, binascii, struct, json, copy
+import numpy as np
 from xml.dom import minidom
+
+RAW_DIR = os.path.dirname(os.path.abspath(__file__))
+if RAW_DIR not in sys.path:
+    sys.path.append(RAW_DIR)
+import RAWGlobals, SASImage, SASM, SASExceptions
 import SASMarHeaderReader #Attempting to remove the reliance on compiled packages. Switchin Mar345 reading to fabio.
 
 try:

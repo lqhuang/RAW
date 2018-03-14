@@ -29,14 +29,18 @@ functions, including calculation of rg and molecular weight.
 """
 from __future__ import print_function, division
 
-import numpy as np
-from scipy import integrate as integrate
-import os, time, subprocess, scipy.optimize, threading, platform
+import os, sys, time, subprocess, scipy.optimize, threading, platform
 try:
     import Queue as queue  # python 2
 except ModuleNotFoundError:
     import queue  # python 3
 
+import numpy as np
+from scipy import integrate as integrate
+
+RAW_DIR = os.path.dirname(os.path.abspath(__file__))
+if RAW_DIR not in sys.path:
+    sys.path.append(RAW_DIR)
 import SASFileIO, SASExceptions, RAWSettings
 
 def autoRg(sasm):

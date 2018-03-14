@@ -30,10 +30,14 @@ IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 POSSIBILITY OF SUCH DAMAGE.
 """
 
-from __future__ import  print_function, division
+from __future__ import print_function, division
 
+import os, sys
 import numpy as np
-import sys
+
+RAW_DIR = os.path.dirname(os.path.abspath(__file__))
+if RAW_DIR not in sys.path:
+    sys.path.append(RAW_DIR)
 import RAWGlobals
 #from scipy.weave import ext_tools
 #from scipy.weave import converters

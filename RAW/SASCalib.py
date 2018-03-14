@@ -23,9 +23,13 @@ Created on Jul 11, 2010
 '''
 from __future__ import print_function, division
 
-import numpy as np
+import os, sys
 from math import pi, asin, tan, atan, cos
-import sys
+import numpy as np
+
+RAW_DIR = os.path.dirname(os.path.abspath(__file__))
+if RAW_DIR not in sys.path:
+    sys.path.append(RAW_DIR)
 import RAWGlobals
 
 try:

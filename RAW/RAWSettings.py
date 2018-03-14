@@ -28,7 +28,11 @@ try:
     import cPickle as pickle  # python 2
 except ModuleNotFoundError:
     import pickle  # python 3
-import copy, os
+import os, sys, copy
+
+RAW_DIR = os.path.dirname(os.path.abspath(__file__))
+if RAW_DIR not in sys.path:
+    sys.path.append(RAW_DIR)
 import RAWGlobals, SASFileIO
 
 

@@ -1,10 +1,14 @@
 from __future__ import print_function, division
 
 import os
+import sys
 import platform
 import glob
 import subprocess
 
+RAW_DIR = os.path.dirname(os.path.abspath(__file__))
+if RAW_DIR not in sys.path:
+    sys.path.append(RAW_DIR)
 import SASExceptions
 
 

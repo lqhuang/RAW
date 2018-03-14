@@ -7,9 +7,12 @@ import copy
 import platform
 import subprocess
 
-import numpy as np
 from scipy import polyval, polyfit
+import numpy as np
 
+RAW_DIR = os.path.dirname(os.path.abspath(__file__))
+if RAW_DIR not in sys.path:
+    sys.path.append(RAW_DIR)
 import SASM
 import SASFileIO
 import SASExceptions

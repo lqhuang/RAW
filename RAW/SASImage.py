@@ -26,8 +26,13 @@ from __future__ import print_function, division  # TODO: check whether true divi
 
 import numpy as np
 from scipy import optimize
+import os, sys, math  # wx
+
+RAW_DIR = os.path.dirname(os.path.abspath(__file__))
+if RAW_DIR not in sys.path:
+    sys.path.append(RAW_DIR)
 import SASExceptions, SASParser, SASCalib, SASM, RAWGlobals
-import sys, math  # wx
+import polygonMasking as polymask
 
 try:
     import pyFAI
@@ -50,7 +55,6 @@ if RAWGlobals.compiled_extensions:
             RAWGlobals.compiled_extensions = False
             print(error)
 
-import polygonMasking as polymask
 
 class Mask:
     ''' Mask super class. Masking is used for masking out unwanted regions
