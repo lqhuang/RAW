@@ -160,6 +160,14 @@ class ErrorPrinter():
             print(
                 'Please select the items you want the marked (star) item superimposed from.',
                 file=self._stdout)
+        elif typename == 'align':
+            print(
+                'Please select the items you want the marked (star) item aligned from.',
+                file=self._stdout)
+        elif typename == 'scale':
+            print(
+                'Please select the items you want the marked (star) item scaled from.',
+                file=self._stdout)
 
     def showPleaseMarkItemError(self, typename):
         print('No item marked Error:', end=' ', file=self._stdout)
@@ -178,6 +186,10 @@ class ErrorPrinter():
         elif typename == 'interpolate':
             print(
                 'Please mark (star) the item you are using as the main curve for interpolation',
+                file=self._stdout)
+        elif typename == 'align':
+            print(
+                'Please mark (star) the item you are using as the main curve for alignment',
                 file=self._stdout)
 
     def showSaveError(self, err_type):

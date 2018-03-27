@@ -44,8 +44,8 @@ class RAWSimulator():
             self._stdout = sys.stdout
         else:
             self._stdout = open(log_file, mode='w')
-
         self.error_printer = ErrorPrinter(self._raw_settings, self._stdout)
+
         # create mask
         self._createMasks()
 
@@ -64,31 +64,33 @@ class RAWSimulator():
         img_dim = self._raw_settings.get('MaskDimension')
 
         cfg_path = self._raw_settings.get('CurrentCfg')
-        cfg_root = os.path.split(cfg_path)[0]
-        cached_masks = glob.glob(os.path.join(cfg_root, '*Mask*.npy'))
-        cached_keys = [
-            os.path.splitext(os.path.split(mask_path)[1])[0]
-            for mask_path in cached_masks
-        ]
+        cfg_name, _ = os.path.splitext(cfg_path)
+
+        # mask path: /where/is/the/cfgfile/cfgname-BeamStopMask.npy
+        cached_path = glob.glob('{0}-{1}'.format(cfg_name, '*Mask*.npy'))
+        cached_masks = {
+            os.path.splitext(mask_path.split('-')[-1])[0]: mask_path
+            for mask_path in cached_path
+        }
 
         for each_key in mask_dict.keys():
             # each_key: 'TransparentBSMask', 'BeamStopMask', 'ReadOutNoiseMask'
             # mask_dict[key] = [mask_matrix, mask_object]
             masks = mask_dict[each_key][1]
             if masks != None:
-                if each_key in cached_keys:
-                    mask_img = np.load(
-                        cached_masks[cached_keys.index(each_key)])
+                if each_key in cached_masks:
+                    mask_img = np.load(cached_masks[each_key])
                 else:
                     mask_img = SASImage.createMaskMatrix(img_dim, masks)
                 mask_param = mask_dict[each_key]
+                self._raw_settings.set(each_key, mask_img)
                 mask_param[0] = mask_img
                 mask_param[1] = masks
 
                 if overwrite_cached:
-                    np.save(os.path.join(cfg_root, each_key), mask_img)
-                elif each_key not in cached_keys:
-                    np.save(os.path.join(cfg_root, each_key), mask_img)
+                    np.save('{0}-{1}'.format(cfg_name, each_key), mask_img)
+                elif each_key not in cached_masks:
+                    np.save('{0}-{1}'.format(cfg_name, each_key), mask_img)
 
     def get_raw_settings(self):
         return self._raw_settings
@@ -128,10 +130,10 @@ class RAWSimulator():
         print('Please wait while aligning and plotting...', file=self._stdout)
 
         if marked_sasm is None:
-            self.error_printer.showPleaseMarkItemError('subtract')
+            self.error_printer.showPleaseMarkItemError('align')
             return None
-        elif len(selected_sasms) == 0:
-            self.error_printer.showPleaseSelectItemsError('subtract')
+        elif not selected_sasms:
+            self.error_printer.showPleaseSelectItemsError('align')
             return None
 
         qmin, qmax = qrange
@@ -157,8 +159,37 @@ class RAWSimulator():
 
             scaling_factor = stat_func(ref_i[ref_indices]) / stat_func(
                 curve_i[curve_indices])
-
+            print(
+                'For {}, scaling factor is {}.'.format(
+                    each_sasm.getParameter('filename'), scaling_factor),
+                file=self._stdout)
             each_sasm.scale(scaling_factor)
+
+    def scaleSASMs(self, selected_sasms, scaling_factors):
+        """Scale selected sasms in-place by give scaling factors.
+
+        Parameters
+        ----------
+        selected_sasms : SASM object
+            Scale selected sasm to scale.
+        scaling_factor : iterable float numbers
+            Scaling fator for sasm. Must be the same size of selected sasm.
+
+        Returns
+        -------
+        None
+        """
+        print('Please wait while aligning and plotting...', file=self._stdout)
+
+        if not selected_sasms:
+            self.error_printer.showPleaseSelectItemsError('scale')
+            return None
+        if len(selected_sasms) != len(scaling_factors):
+            raise ValueError(
+                'Scaling factors should be the same size with selected sasms.')
+
+        for each_sasm, factor in zip(selected_sasms, scaling_factors):
+            each_sasm.scale(float(factor))
 
     def calibrateSASM(self, sasm):
         pass
@@ -247,16 +278,9 @@ class RAWSimulator():
         try:
             for each_filename in filename_list:
                 file_ext = os.path.splitext(each_filename)[1]
-
                 if file_ext == '.ift' or file_ext == '.out':
                     iftm, _ = SASFileIO.loadFile(each_filename,
                                                  self._raw_settings)
-
-                    if file_ext == '.ift':
-                        item_colour = 'blue'
-                    else:
-                        item_colour = 'black'
-
                     if isinstance(iftm, list):
                         iftm_list.extend(iftm)
                     else:
@@ -299,7 +323,7 @@ class RAWSimulator():
             self.error_printer.showPleaseMarkItemError('superimpose')
             return None
 
-        if len(superimposed_sasms) == 0:
+        if not selected_sasms:
             self.error_printer.showPleaseSelectItemsError('superimpose')
             return None
 
@@ -334,7 +358,7 @@ class RAWSimulator():
         if marked_sasm is None:
             self.error_printer.showPleaseMarkItemError('subtract')
             return None
-        elif len(selected_sasms) == 0:
+        elif not selected_sasms:
             self.error_printer.showPleaseSelectItemsError('subtract')
             return None
 
