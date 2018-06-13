@@ -1398,7 +1398,7 @@ def weightedAverage(sasm_list, weightByError, weightCounter, forced = False):
 
 def calcAbsoluteScaleWaterConst(water_sasm, emptycell_sasm, I0_water, raw_settings):
 
-    if emptycell_sasm == None or emptycell_sasm == 'None' or water_sasm == 'None' or water_sasm == None:
+    if emptycell_sasm is None or emptycell_sasm == 'None' or water_sasm == 'None' or water_sasm is None:
         raise SASExceptions.AbsScaleNormFailed('Empty cell file or water file was not found. Open options to set these files.')
 
     water_bgsub_sasm = subtract(water_sasm, emptycell_sasm)

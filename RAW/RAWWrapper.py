@@ -77,7 +77,7 @@ class RAWSimulator():
             # each_key: 'TransparentBSMask', 'BeamStopMask', 'ReadOutNoiseMask'
             # mask_dict[key] = [mask_matrix, mask_object]
             masks = mask_dict[each_key][1]
-            if masks != None:
+            if masks is not None:
                 if each_key in cached_masks:
                     mask_img = np.load(cached_masks[each_key])
                 else:

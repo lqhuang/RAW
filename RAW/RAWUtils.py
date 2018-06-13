@@ -54,7 +54,7 @@ def findATSASDirectory():
     except Exception:
         path = None
 
-    if path != None:
+    if path is not None:
         if opsys == 'Windows':
             split_path = path.split(';')
         else:
@@ -70,7 +70,7 @@ def findATSASDirectory():
     except Exception:
         atsas_path = None
 
-    if atsas_path != None:
+    if atsas_path is not None:
         if atsas_path.lower().find('atsas') > -1:
             atsas_path = atsas_path.rstrip('\\')
             atsas_path = atsas_path.rstrip('/')

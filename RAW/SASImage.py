@@ -300,7 +300,7 @@ def getBindListDataFromHeader(raw_settings, img_hdr, file_hdr, keys):
     result = []
 
     for each_key in keys:
-        if bind_list[each_key][1] != None:
+        if bind_list[each_key][1] is not None:
             data = bind_list[each_key][1]
             hdr_choice = data[1]
             key = data[0]
@@ -360,9 +360,9 @@ def calibrateAndNormalize(sasm_list, img_list, raw_settings):
             file_hdr = sasm.getParameter('counters')
 
             result = getBindListDataFromHeader(raw_settings, img_hdr, file_hdr, keys = ['Sample Detector Distance', 'Detector Pixel Size', 'Wavelength'])
-            if result[0] != None: sd_distance = result[0]
-            if result[1] != None: pixel_size = result[1]
-            if result[2] != None: wavelength = result[2]
+            if result[0] is not None: sd_distance = result[0]
+            if result[1] is not None: pixel_size = result[1]
+            if result[2] is not None: wavelength = result[2]
 
         if raw_settings.get('DoSolidAngleCorrection'):
             sc = SASCalib.calcSolidAngleCorrection(sasm, sd_distance, pixel_size)
@@ -378,7 +378,7 @@ def calibrateAndNormalize(sasm_list, img_list, raw_settings):
         img_hdr = sasm.getParameter('imageHeader')
         file_hdr = sasm.getParameter('counters')
 
-        if normlist != None and enable_normalization == True:
+        if normlist is not None and enable_normalization == True:
             sasm.setParameter('normalizations', {'Counter_norms':raw_settings.get('NormalizationList')})
 
             if raw_settings.get('DoSolidAngleCorrection'):
@@ -395,7 +395,7 @@ def calibrateAndNormalize(sasm_list, img_list, raw_settings):
                 #try:
                 val = calcExpression(expr, img_hdr, file_hdr)
 
-                if val != None:
+                if val is not None:
                     val = float(val)
                 else:
                     raise ValueError
@@ -904,10 +904,10 @@ def radialAverage(in_image, x_cin, y_cin, mask = None, readoutNoise_mask = None,
     ylen = np.int(ylen)
 
     # If no mask is given, the mask is pure ones
-    if mask == None:
+    if mask is None:
         mask = np.ones(in_image.shape)
 
-    if readoutNoise_mask == None:
+    if readoutNoise_mask is None:
         readoutNoiseFound = 0
         readoutNoise_mask = np.zeros(in_image.shape, dtype = np.float64)
     else:
@@ -1059,9 +1059,9 @@ def pyFAIIntegrateCalibrateNormalize(img, parameters, x_cin, y_cin, raw_settings
         file_hdr = parameters['counters']
 
         result = getBindListDataFromHeader(raw_settings, img_hdr, file_hdr, keys = ['Sample Detector Distance', 'Detector Pixel Size', 'Wavelength'])
-        if result[0] != None: sd_distance = result[0]
-        if result[1] != None: pixel_size = result[1]
-        if result[2] != None: wavelength = result[2]
+        if result[0] is not None: sd_distance = result[0]
+        if result[1] is not None: pixel_size = result[1]
+        if result[2] is not None: wavelength = result[2]
 
     #Set up mask
     img = np.float64(img)
@@ -1078,7 +1078,7 @@ def pyFAIIntegrateCalibrateNormalize(img, parameters, x_cin, y_cin, raw_settings
     else:
         mask = np.logical_not(mask)
 
-    # if readoutNoise_mask == None:
+    # if readoutNoise_mask is None:
     #     readoutNoiseFound = 0
     #     readoutNoise_mask = np.zeros(img.shape, dtype = np.float64)
     # else:
@@ -1143,7 +1143,7 @@ def pyFAIIntegrateCalibrateNormalize(img, parameters, x_cin, y_cin, raw_settings
     img_hdr = sasm.getParameter('imageHeader')
     file_hdr = sasm.getParameter('counters')
 
-    if normlist != None and do_normalization == True:
+    if normlist is not None and do_normalization == True:
         sasm.setParameter('normalizations', {'Counter_norms' : normlist})
 
         for each in normlist:
@@ -1152,7 +1152,7 @@ def pyFAIIntegrateCalibrateNormalize(img, parameters, x_cin, y_cin, raw_settings
             #try:
             val = calcExpression(expr, img_hdr, file_hdr)
 
-            if val != None:
+            if val is not None:
                 val = float(val)
             else:
                 raise ValueError

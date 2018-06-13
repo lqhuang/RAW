@@ -54,7 +54,7 @@ class RawGuiSettings:
 
         self._params = settings
 
-        if settings == None:
+        if settings is None:
             self._params = {
                             #'NormalizeConst'    : [1.0,   NewId(), 'float'],
                             #'NormalizeConstChk' : [False, NewId(),  'bool'],
