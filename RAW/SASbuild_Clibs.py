@@ -25,7 +25,7 @@ except ImportError:
 import numpy as np
 import os, sys, shutil
 
-workdir = os.path.realpath(__file__)  # os.getcwd()
+workdir = os.path.realpath(os.path.dirname(__file__))  # os.getcwd()
 temp_dir = os.path.join(workdir, 'temp')
 
 
@@ -324,7 +324,7 @@ def build_radavg():
     #SYSTEM TEMP DIR MIGHT NOT HAVE WRITE PERMISSION OR HAS SPACES IN IT => FAIL!
     #EXTREMELY ANNOYING THAT THE TEMP DIR CAN'T BE SET FROM mod.compile()! .. This is a work around:
 
-    kw, file = mod.build_kw_and_file('.', {})
+    kw, file = mod.build_kw_and_file(workdir, {})
 
     success = build_tools.build_extension(file, temp_dir = temp_dir,
                                               compiler_name = 'gcc',
@@ -540,7 +540,7 @@ def build_testCode():
     mod.add_function(test_func)
 
 
-    kw, file = mod.build_kw_and_file('.', {})
+    kw, file = mod.build_kw_and_file(workdir, {})
 
     success = build_tools.build_extension(file, temp_dir = temp_dir,
                                               compiler_name = 'gcc',
@@ -626,7 +626,7 @@ def build_polygonmask():
 
     mod.add_function(polymsk)
 
-    kw, file = mod.build_kw_and_file('.', {})
+    kw, file = mod.build_kw_and_file(workdir, {})
     success = build_tools.build_extension(file, temp_dir = temp_dir,
                                               compiler_name = 'gcc',
                                               verbose = 0, **kw)
@@ -639,7 +639,7 @@ def buildAll():
 
     try:
         #workdir = os.getcwd()
-        workdir = sys.path[0]
+        workdir = os.path.realpath(os.path.dirname(__file__))
         os.mkdir(os.path.join(workdir, 'temp'))
     except Exception:
         pass
@@ -650,8 +650,8 @@ def buildAll():
         print('Failed to compile test code!')
 
         try:
-            shutil.rmtree('./temp/')
-            os.remove('./test_ext.cpp')
+            shutil.rmtree(os.path.join(workdir, 'temp/'))
+            os.remove(os.path.join(workdir, 'test_ext.cpp'))
         except Exception as error:
             print('Cleanup failed : ', error)
 
@@ -671,15 +671,15 @@ def buildAll():
         print('Failed to compile extensions ravg, polygonmask, bift!')
 
         try:
-            shutil.rmtree('./temp/')
-            # os.remove('./bift_ext.cpp')
-            os.remove('./ravg_ext.cpp')
-            # os.remove('./sinefouriermatrix_ext.cpp')
-            # os.remove('./transmatrix_ext.cpp')
-            # os.remove('./tridiagsolve_ext.cpp')
-            os.remove('./polygonmask_ext.cpp')
-            # os.remove('./packc_ext.cpp')
-            os.remove('./test_ext.cpp')
+            shutil.rmtree(os.path.join(workdir, 'temp/'))
+            # os.remove(os.path.join(workdir, 'bift_ext.cpp'))
+            os.remove(os.path.join(workdir, 'ravg_ext.cpp'))
+            # os.remove(os.path.join(workdir, 'sinefouriermatrix_ext.cpp'))
+            # os.remove(os.path.join(workdir, 'transmatrix_ext.cpp'))
+            # os.remove(os.path.join(workdir, 'tridiagsolve_ext.cpp'))
+            os.remove(os.path.join(workdir, 'polygonmask_ext.cpp'))
+            # os.remove(os.path.join(workdir, 'packc_ext.cpp'))
+            os.remove(os.path.join(workdir, 'test_ext.cpp'))
         except Exception as error:
             print('Cleanup failed : ', error)
 
@@ -692,14 +692,14 @@ def buildAll():
     ## Clean up:
 
     try:
-        shutil.rmtree('./temp/')
-        # os.remove('./bift_ext.cpp')
-        os.remove('./ravg_ext.cpp')
-        # os.remove('./sinefouriermatrix_ext.cpp')
-        # os.remove('./transmatrix_ext.cpp')
-        # os.remove('./tridiagsolve_ext.cpp')
-        os.remove('./polygonmask_ext.cpp')
-        os.remove('./test_ext.cpp')
+        shutil.rmtree(os.path.join(workdir, 'temp/'))
+        # os.remove(os.path.join(workdir, 'bift_ext.cpp'))
+        os.remove(os.path.join(workdir, 'ravg_ext.cpp'))
+        # os.remove(os.path.join(workdir, 'sinefouriermatrix_ext.cpp'))
+        # os.remove(os.path.join(workdir, 'transmatrix_ext.cpp'))
+        # os.remove(os.path.join(workdir, 'tridiagsolve_ext.cpp'))
+        os.remove(os.path.join(workdir, 'polygonmask_ext.cpp'))
+        os.remove(os.path.join(workdir, 'test_ext.cpp'))
     except Exception as error:
         print('Cleanup failed : ', error)
 
