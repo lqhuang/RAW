@@ -25,7 +25,7 @@ except ImportError:
 import numpy as np
 import os, sys, shutil
 
-workdir = os.getcwd()
+workdir = os.path.realpath(__file__)  # os.getcwd()
 temp_dir = os.path.join(workdir, 'temp')
 
 
