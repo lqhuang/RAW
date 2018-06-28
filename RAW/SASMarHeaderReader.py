@@ -376,11 +376,9 @@ class NotTiffException(Exception):
 if __name__ == "__main__":
 
     filename = '/home/specuser/workspace/TestDrivenRaw/src/Tests/TestData/MaxlabMarCCD165.tif'
-    filename = '/Users/lqhuang/Documents/CSRC/Data/SSRF-MagR-201711/Data/20171110/EXP16/Data/buffer_00019.tif'
     d = readHeader(filename)
 
     print("testing headerReader.py on " + filename + "....")
-    print
 
     print("filename:", d['filename'])
     print("Exposure time:" , d['exposure_time'])
@@ -394,6 +392,3 @@ if __name__ == "__main__":
     #print('temp:' ,d['temp'])
 
     print(d)
-
-
-
