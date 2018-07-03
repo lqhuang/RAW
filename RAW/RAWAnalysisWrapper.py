@@ -460,15 +460,19 @@ class GNOMAnalyzer():
             '.out')
 
         if self.raw_settings.get('AutoSaveOnGnom'):
-            if os.path.isdir(self.raw_settings.get('GnomFilePath')):
-                self.saveIFTM(iftm, self.raw_settings.get('GnomFilePath'))
+            save_path = self.raw_settings.get('GnomFilePath')
+            if not os.path.exists(save_path):
+                os.makedirs(save_path)
+            if os.path.isdir(save_path):
+                self.saveIFTM(iftm, save_path)
             else:
                 self.raw_settings.set('GnomFilePath', False)
                 print(
                     'Autosave Error:',
-                    'The folder:\n' + self.raw_settings.get('GNOMFilePath') +
+                    'The folder:\n' + save_path +
                     '\ncould not be found. Autosave of GNOM files has been disabled. If you are using a config file from a different computer please go into Advanced Options/Autosave to change the save folders, or save you config file to avoid this message next time.',
                     file=self._stdout)
+                raise NotADirectoryError("target save path isn't a directory.")
 
     def saveIFTM(self, iftm, save_path):
         """Save IFTM object to file."""
