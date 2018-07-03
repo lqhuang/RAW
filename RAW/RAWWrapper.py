@@ -4,8 +4,10 @@ import os
 import sys
 import copy
 import glob
+from io import TextIOBase, open
 
 import numpy as np
+from six import string_types
 
 RAW_DIR = os.path.dirname(os.path.abspath(__file__))
 if RAW_DIR not in sys.path:
@@ -40,10 +42,12 @@ class RAWSimulator():
             self._raw_settings.set('ATSASDir', atsas_dir)
 
         # print to log file
-        if log_file is None:
+        if log_file is None or log_file == sys.stdout:
             self._stdout = sys.stdout
-        else:
-            self._stdout = open(log_file, mode='w')
+        elif isinstance(log_file, string_types):
+            self._stdout = open(log_file, mode='w', encoding='utf-8')
+        elif isinstance(log_file, TextIOBase):
+            self._stdout = log_file
         self.error_printer = ErrorPrinter(self._raw_settings, self._stdout)
 
         # create mask
@@ -59,7 +63,7 @@ class RAWSimulator():
 
     def _createMasks(self, overwrite_cached=False):
         """Create mask from mask objects."""
-        print('Please wait while creating masks...', file=self._stdout)
+        print(u'Please wait while creating masks...', file=self._stdout)
         mask_dict = self._raw_settings.get('Masks')
         img_dim = self._raw_settings.get('MaskDimension')
 
@@ -121,13 +125,13 @@ class RAWSimulator():
         selected_sasms : SASM object
             Scale selected sasm to align with reference.
         qrange : (qmin, qmax), float
-            Q range for alignment and scaling. 
+            Q range for alignment and scaling.
 
         Returns
         -------
         None
         """
-        print('Please wait while aligning and plotting...', file=self._stdout)
+        print(u'Please wait while aligning and plotting...', file=self._stdout)
 
         if marked_sasm is None:
             self.error_printer.showPleaseMarkItemError('align')
@@ -179,7 +183,7 @@ class RAWSimulator():
         -------
         None
         """
-        print('Please wait while aligning and plotting...', file=self._stdout)
+        print(u'Please wait while aligning and plotting...', file=self._stdout)
 
         if not selected_sasms:
             self.error_printer.showPleaseSelectItemsError('scale')
@@ -200,7 +204,7 @@ class RAWSimulator():
 
     def loadSASMs(self, filename_list):
         """Load image or dat files."""
-        print('Please wait while loading files...', file=self._stdout)
+        print(u'Please wait while loading files...', file=self._stdout)
         sasm_list = []
         do_auto_save = self._raw_settings.get('AutoSaveOnImageFiles')
 
@@ -227,6 +231,11 @@ class RAWSimulator():
 
                     if do_auto_save:
                         save_path = self._raw_settings.get('ProcessedFilePath')
+                        if not os.path.exists(save_path):
+                            os.makedirs(save_path)
+                        elif not os.path.isdir(save_path):
+                            raise NotADirectoryError(
+                                "target save path isn't a directory.")
                         try:
                             if isinstance(sasm, list):
                                 for each in sasm:
@@ -272,7 +281,7 @@ class RAWSimulator():
 
     def loadIFTMs(self, filename_list):
         """Load GNOM .ift/.out files."""
-        print('Please wait while loading files...', file=self._stdout)
+        print(u'Please wait while loading files...', file=self._stdout)
         iftm_list = []
 
         try:
@@ -385,6 +394,11 @@ class RAWSimulator():
 
                 if do_auto_save:
                     save_path = self._raw_settings.get('SubtractedFilePath')
+                    if not os.path.exists(save_path):
+                        os.makedirs(save_path)
+                    elif not os.path.isdir(save_path):
+                        raise NotADirectoryError(
+                            "target save path isn't a directory.")
                     try:
                         self.saveSASM(subtracted_sasm, '.dat', save_path)
                     except IOError as error:
@@ -403,7 +417,7 @@ class RAWSimulator():
 
     def averageSASMs(self, selected_sasms, yes_to_all=False):
         """ average selected sasms in the manipulation list.
-        
+
         Parameters
         ----------
         selected_sasms: list of SASM object
@@ -417,7 +431,8 @@ class RAWSimulator():
         average_sasm : SASM object
             Return average sasm.
         """
-        print('Please wait while averaging and plotting...', file=self._stdout)
+        print(
+            u'Please wait while averaging and plotting...', file=self._stdout)
         do_auto_save = self._raw_settings.get('AutoSaveOnAvgFiles')
 
         if len(selected_sasms) < 2:
@@ -434,6 +449,10 @@ class RAWSimulator():
 
         if do_auto_save:
             save_path = self._raw_settings.get('AveragedFilePath')
+            if not os.path.exists(save_path):
+                os.makedirs(save_path)
+            elif not os.path.isdir(save_path):
+                raise NotADirectoryError("target save path isn't a directory.")
             try:
                 self.saveSASM(avg_sasm, '.dat', save_path)
             except IOError as error:
@@ -447,7 +466,7 @@ class RAWSimulator():
 
     def weightedAverageSASMs(self, selected_sasms, yes_to_all=False):
         """Average selected sasms with weights in the manipulation list.
-       
+
         Parameters
         ----------
         selected_sasms: list of SASM object
@@ -461,7 +480,8 @@ class RAWSimulator():
         average_sasm : SASM object
             Return average sasm.
         """
-        print('Please wait while averaging and plotting...', file=self._stdout)
+        print(
+            u'Please wait while averaging and plotting...', file=self._stdout)
         do_auto_save = self._raw_settings.get('AutoSaveOnAvgFiles')
 
         if len(selected_sasms) < 2:
@@ -514,6 +534,10 @@ class RAWSimulator():
 
         if do_auto_save:
             save_path = self._raw_settings.get('AveragedFilePath')
+            if not os.path.exists(save_path):
+                os.makedirs(save_path)
+            elif not os.path.isdir(save_path):
+                raise NotADirectoryError("target save path isn't a directory.")
             try:
                 self.saveSASM(avg_sasm, '.dat', save_path)
             except IOError as error:
