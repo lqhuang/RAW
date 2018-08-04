@@ -34,10 +34,13 @@ if RAW_DIR not in sys.path:
 import SASExceptions, SASParser, SASCalib, SASM, RAWGlobals
 import polygonMasking as polymask
 
+if RAWGlobals.isPY2:
+    from SASExceptions import ModuleNotFoundError
+
 try:
     import pyFAI
     RAWGlobals.usepyFAI = True
-except ModuleNotFoundError:
+except (ImportError, ModuleNotFoundError):
     RAWGlobals.usepyFAI = False
 
 # If C extensions have not been built, build them:
@@ -373,7 +376,7 @@ def calibrateAndNormalize(sasm_list, img_list, raw_settings):
 
         if calibrate_check:
             sasm.calibrateQ(sd_distance, pixel_size, wavelength)
-            
+
         normlist = raw_settings.get('NormalizationList')
         img_hdr = sasm.getParameter('imageHeader')
         file_hdr = sasm.getParameter('counters')
@@ -992,7 +995,7 @@ def radialAverage(in_image, x_cin, y_cin, mask = None, readoutNoise_mask = None,
     # print(iq)
 
     if x_c > 0 and x_c < xlen and y_c > 0 and y_c < ylen:
-        iq[0] = in_image[round(x_c), round(y_c)]  #the center is not included in the radial average, so it is set manually her
+        iq[0] = in_image[int(round(x_c)), int(round(y_c))]  #the center is not included in the radial average, so it is set manually her
 
 
     #Estimated Standard deviation   - equal to the std of pixels in the area / sqrt(N)

@@ -17,6 +17,8 @@ import SASM
 import SASFileIO
 import SASImage
 import SASExceptions
+if sys.version_info < (3, 0):
+    from SASExceptions import NotADirectoryError
 
 from RAWUtils import findATSASDirectory, ErrorPrinter
 from RAWAnalysisWrapper import RAWAnalysisSimulator

@@ -81,7 +81,8 @@ def findATSASDirectory():
                     return os.path.join(atsas_path, 'bin')
 
     # return ''
-    raise SASExceptions.NoATSASError('No ATSAS found')
+    # raise SASExceptions.NoATSASError('No ATSAS found')
+    print('\nNo ATSAS found.\n')
 
 
 class ErrorPrinter():

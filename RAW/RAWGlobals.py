@@ -18,22 +18,25 @@
 
 # try:
 #     import Queue as queue  # python 2
-# except ModuleNotFoundError:
+# except (ImportError, ModuleNotFoundError):
 #     import queue  # python 3
 import sys
 import os
 
-global compiled_extensions
+
 if sys.version_info < (3, 0):
+    isPY2 = True
+    from SASExceptions import ModuleNotFoundError
     try:
         try:
             import weave
-        except ModuleNotFoundError:
+        except (ImportError, ModuleNotFoundError):
             import scipy.weave as weave
         compiled_extensions = True
-    except ModuleNotFoundError:
+    except (ImportError, ModuleNotFoundError):
         compiled_extensions = False
 else:
+    isPY2 = False
     compiled_extensions = False
 
 # global mainworker_cmd_queue
