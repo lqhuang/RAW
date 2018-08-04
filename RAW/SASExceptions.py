@@ -21,6 +21,20 @@ Created on Aug 2, 2010
 #
 #******************************************************************************
 '''
+import sys
+
+if sys.version_info < (3, 0):
+    class ModuleNotFoundError(Exception):
+        def __init__(self, value):
+           self.parameter = value
+        def __str__(self):
+           return repr(self.parameter)
+
+    class NotADirectoryError(Exception):
+        def __init__(self, value):
+           self.parameter = value
+        def __str__(self):
+           return repr(self.parameter)
 
 class WrongImageFormat(Exception):
        def __init__(self, value):

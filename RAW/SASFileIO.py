@@ -41,9 +41,10 @@ if RAW_DIR not in sys.path:
 import RAWGlobals, SASImage, SASM, SASExceptions
 import SASMarHeaderReader #Attempting to remove the reliance on compiled packages. Switchin Mar345 reading to fabio.
 
-try:
+if RAWGlobals.isPY2:
     import cPickle as pickle  # python 2
-except ImportError:
+    import string
+else:
     import pickle  # python 3
 
 #switched from PIL to pillow
@@ -299,11 +300,13 @@ def loadTiffImage(filename):
     try:
         im = Image.open(filename)
         if int(PIL.PILLOW_VERSION.split('.')[0])>2:
-            img = np.fromstring(im.tobytes(), np.uint16) #tobytes is compatible with pillow >=3.0, tostring was depreciated
+            img = np.asarray(im, dtype=np.unit16)
+            # img = np.fromstring(im.tobytes(), np.uint16) #tobytes is compatible with pillow >=3.0, tostring was depreciated
         else:
             img = np.fromstring(im.tostring(), np.uint16)
+            img = np.reshape(img, im.size)
 
-        img = np.reshape(img, im.size)
+        im.close()
     except IOError:
         return None, {}
 
@@ -316,11 +319,12 @@ def load32BitTiffImage(filename):
     try:
         im = Image.open(filename)
         if int(PIL.PILLOW_VERSION.split('.')[0])>2:
-            img = np.fromstring(im.tobytes(), np.uint32) #tobytes is compatible with pillow >=3.0, tostring was depreciated
+            img = np.asarray(im, dtype=np.float)
+            # img = np.fromstring(im.tobytes(), np.uint32) #tobytes is compatible with pillow >=3.0, tostring was depreciated
         else:
             img = np.fromstring(im.tostring(), np.uint32)
-
-        img = np.reshape(img, im.size)
+            img = np.reshape(img, (im.size[1], im.size[0]))
+        im.close()
     #except IOError:
     except Exception as e:
         print(e)
@@ -1357,7 +1361,7 @@ all_header_types = {'None'                  : None,
 
 if use_fabio:
     all_image_types = {
-                       'Pilatus'       : loadFabio,
+                       'Pilatus'            : loadFabio,
                        'CBF'                : loadFabio,
                        'SAXSLab300'         : loadSAXSLAB300Image,
                        'ADSC Quantum'       : loadFabio,
@@ -1392,7 +1396,7 @@ if use_fabio:
         all_image_types['Eiger'] = loadFabio
 
 else:
-    all_image_types = {'Quantum'            : loadQuantumImage,
+    all_image_types = {'Quantum'                : loadQuantumImage,
                        'MarCCD 165'             : loadMarCCD165Image,
                        'Medoptics'              : loadTiffImage,
                        'FLICAM'                 : loadTiffImage,
@@ -1470,7 +1474,7 @@ def loadHeader(filename, new_filename, header_type):
         hdr = {key.replace(' ', '_').translate(None, '()[]') : hdr[key] for key in hdr}
         hdr = { key : unicode(hdr[key], errors='ignore') if type(hdr[key]) == str else hdr[key] for key in hdr}
     except TypeError:  # python 3
-        hdr = {key.replace(' ', '_').translate(''.maketrans('', '', '()[]')) : 
+        hdr = {key.replace(' ', '_').translate(''.maketrans('', '', '()[]')):
                hdr[key].decode('utf-8') if isinstance(hdr[key], bytes) else hdr[key]
                for key in hdr}
 
@@ -1499,11 +1503,15 @@ def loadImage(filename, image_type):
 
     #Clean up headers by removing spaces in header names and non-unicode characters)
     for hdr in imghdr:
-        try:  # python 2
-            hdr = {key.replace(' ', '_').translate(None, '()[]') : hdr[key] for key in hdr}
-            hdr = { key : unicode(hdr[key], errors='ignore') if type(hdr[key]) == str else hdr[key] for key in hdr}
-        except TypeError:  # python 3
-            hdr = {key.replace(' ', '_').translate(''.maketrans('', '', '()[]')) : 
+        if RAWGlobals.isPY2:  # python 2
+            # In python 2, str/bytes.translate(table [,deletechars])
+            # and unicode.translate(table) accept different arguments.
+            hdr = {unicode(key, errors='ignore') if isinstance(type(key), str) else key :
+                   unicode(hdr[key], errors='ignore') if type(hdr[key]) == str else hdr[key]
+                   for key in hdr}
+            hdr = {key.replace(' ', '_').translate({ord(c):u'' for c in u'()[]'}): hdr[key] for key in hdr}
+        else:
+            hdr = {key.replace(' ', '_').translate(''.maketrans('', '', '()[]')) :
                    hdr[key].decode('utf-8') if isinstance(hdr[key], bytes) else hdr[key]
                    for key in hdr}
 

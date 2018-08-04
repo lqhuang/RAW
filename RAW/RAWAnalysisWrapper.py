@@ -19,6 +19,9 @@ import SASExceptions
 import SASCalc
 from RAWUtils import ErrorPrinter
 
+if sys.version_info < (3, 0):
+    from SASExceptions import NotADirectoryError
+
 
 class GuinierAnalyzer():
     """Wrapper for GuinierControlPanel"""
