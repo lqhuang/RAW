@@ -17,9 +17,16 @@ from RAW import RAWSimulator
 from fileio import get_mean_ionchamber, load_record
 
 
-def remove_processed(data_list, processed_path):
+def unicodify(text):
+    if isinstance(text, str):
+        return text
+    elif isinstance(text, bytes):
+        return text.decode('utf-8')
+
+
+def remove_processed(data_list, processed_path, target_ext='.dat'):
     """Remove processed image data from given list"""
-    processed_files = sorted(glob.glob1(processed_path, '*.dat'))
+    processed_files = sorted(glob.glob1(processed_path, '*%s' % target_ext))
     processed_data = [os.path.splitext(fname)[0] for fname in processed_files]
     for filepath in reversed(data_list):
         fname = os.path.splitext(os.path.split(filepath)[1])[0]
@@ -40,12 +47,22 @@ def convert_ext(file_list, new_ext, new_dir=None):
     return new_file_list
 
 
-def check_arguments():
-    pass
+def parse_args(args):
+    # args (list):
+    args_dict = {}
+    for item in args:
+        key, arg = item.strip('-').split('=')
+        args_dict[key] = arg
+    return args_dict
 
 
 def now():
     return u'[{}]'.format(str(datetime.now()))
+
+
+def now_under_score():
+    return u'{}'.format(
+        datetime.strftime(datetime.now(), r'%Y_%m_%d_%H_%M_%S'))
 
 
 def is_buffer(filename):
@@ -54,7 +71,8 @@ def is_buffer(filename):
 
 def split_buffer_sample(filenames):
     """Split file list into buffer file list and sample file list"""
-    # Incredibily ingenious:) Just for fun. Readability is always more important.
+    # Incredibily ingenious:) Just for fun.
+    # Readability is always more important.
     buffer_files, sample_files = [], []
     for fname in filenames:
         # (False, True)
@@ -66,7 +84,9 @@ def split_buffer_sample(filenames):
 
 
 def strip_dir(filename):
-    strip_func = lambda x: os.path.split(x)[-1]
+    def strip_func(x):
+        return os.path.split(x)[-1]
+
     if isinstance(filename, string_types):
         return strip_func(filename)
     elif isinstance(filename, Iterable):
@@ -79,13 +99,71 @@ def get_max_length(filenames):
     return max(length)
 
 
-def average_for_one_record():
-    pass
+def gen_average_form(target, filelist, prepadding=2):
+    filelist = strip_dir(filelist)
+    target_leng = len(target)
+    const_leng = 19
+    size = len(filelist)
+    target_line = u' ' * prepadding + target + u' is averaged from -'
 
+    if size < 2:
+        form = target_line + filelist[0]
+    else:
+        brace = [u' /'] + [u'| '] * (size - 2) + [u' \\']
+        blank = [u' ' * (prepadding + target_leng + const_leng)]
+
+        prefix_header = blank * ((size - 1) // 2) + \
+            [target_line] + blank * (size // 2)
+        form = u'\n'.join(
+            map(lambda x: u''.join(x), zip(prefix_header, brace, filelist)))
+    # print(form)
+    return form
+
+
+def check_essential_arguments(exp_config, config_file):
+    missing_args = []
+
+    check_info = u'{} Check and set default value for missing arguments:\n'.format(now())
+    if exp_config.get('exp_root_path', None) is None:
+        missing_args.append('exp_root_path')
+        exp_config['exp_root_path'] = os.path.abspath(os.path.dirname(config_file))
+    if exp_config.get('raw_cfg_path', None) is None:
+        check_info += u'  Error: No raw_cfg_path found.'
+        missing_args.append('raw_cfg_path')
+        raise ValueError('please specify a cfg file.')
+
+    default_options = {
+        'skip_frames': 1,
+        'buffer_skip_frames': 1,
+        'SourceFilePath': 'Data',
+        'ProcessedFilePath':'Processed',
+        'AveragedFilePath':'Averaged',
+        'SubtractedFilePath':'Subtracted',
+        'GnomFilePath':'GNOM',
+        'img_ext': '.tif',
+        'dat_ext': '.dat',
+        'ionchamber_ext': '.Iochamber',
+        'record_ext': '.log',
+        'overwrite': False,
+    }
+    existent_args = exp_config.keys()
+
+    for key, val in iteritems(default_options):
+        if key not in existent_args:
+            missing_args.append(key)
+            exp_config[key] = val
+
+    max_length = get_max_length(missing_args)
+    for key in missing_args:
+        val = exp_config[key]
+        check_info += u'  {:<{l}}: {}\n'.format(key, val, l=max_length)
+
+    check_info += '\n'
+    return check_info
 
 def run_RAW(exp_config):
-    # TODO: complete this scripts
-
+    """Old version"""
+    # TODO: complete this scriptss
     raw_cfg_path = exp_config['raw_cfg_path']
     exp_root_path = exp_config['exp_root_path']
 
@@ -214,15 +292,14 @@ def run_automatic(exp_config, log_file=sys.stdout):
     raw_cfg_path = exp_config['raw_cfg_path']
     exp_root_path = exp_config['exp_root_path']
 
-    source_data_path = os.path.join(exp_root_path, 'Data')
-    num_skip = exp_config.get('skip_frames', 1)
-    buffer_num_skip = exp_config.get('buffer_skip_frames', 1)
-    num_frames_per_group = exp_config.get('window_size', 5)
+    num_skip = exp_config['skip_frames']
+    buffer_num_skip = exp_config['buffer_skip_frames']
 
-    ProcessedFilePath = exp_config.get('ProcessedFilePath', 'Processed')
-    AveragedFilePath = exp_config.get('AveragedFilePath', 'Averaged')
-    SubtractedFilePath = exp_config.get('SubtractedFilePath', 'Subtracted')
-    GnomFilePath = exp_config.get('GnomFilePath', 'GNOM')
+    SourceFilePath = exp_config['SourceFilePath']
+    ProcessedFilePath = exp_config['ProcessedFilePath']
+    AveragedFilePath = exp_config['AveragedFilePath']
+    SubtractedFilePath = exp_config['SubtractedFilePath']
+    GnomFilePath = exp_config['GnomFilePath']
     raw_settings = {
         'ProcessedFilePath': os.path.join(exp_root_path, ProcessedFilePath),
         'AveragedFilePath': os.path.join(exp_root_path, AveragedFilePath),
@@ -234,8 +311,16 @@ def run_automatic(exp_config, log_file=sys.stdout):
         'AutoSaveOnGnom': False,
         'DatHeaderOnTop': True,
     }
+    source_data_path = os.path.join(exp_root_path, SourceFilePath)
 
-    intensity_base = 2.509468563829787e-10
+    img_ext = exp_config['img_ext']  # '.tif'
+    dat_ext = exp_config['dat_ext']  # '.dat'
+    ionchamber_ext = exp_config['ionchamber_ext']  # '.Iochamber'
+    record_ext = exp_config['record_ext']  # '.log'
+
+    overwirte_processed = exp_config['overwrite']
+
+    base_intensity = exp_config.get('base_ionchamber', None)
 
     raw_simulator = RAWSimulator(
         raw_cfg_path,
@@ -245,12 +330,7 @@ def run_automatic(exp_config, log_file=sys.stdout):
     )
     raw_simulator.set_raw_settings(**raw_settings)
 
-    img_ext = '.tif'
-    dat_ext = '.dat'
-    ionchamber_ext = '.Iochamber'
-    record_ext = '.log'
-
-    # generate file map
+    # ================= generate file map =========================== #
     img_pattern = os.path.join(source_data_path, '*%s' % img_ext)
     ionchamber_pattern = os.path.join(source_data_path, '*%s' % ionchamber_ext)
     record_pattern = os.path.join(source_data_path, '*%s' % record_ext)
@@ -259,22 +339,42 @@ def run_automatic(exp_config, log_file=sys.stdout):
     ionchamber_files = glob.glob(ionchamber_pattern)
     record_files = glob.glob(record_pattern)
 
-    # Stage ?: convert scattering image to scattering profile
+    buffer_ionchamber, sample_ionchamber = split_buffer_sample(
+        ionchamber_files)
+    buffer_records, sample_records = split_buffer_sample(record_files)
 
-    overwirte_processed = exp_config.get('overwrite', False)
+    # sort filename list with last integer (eg: ***_1.ext, ***_002.ext)
+    regpattern = re.compile(r'\d+')
+
+    def key_func(x):
+        return int(regpattern.findall(os.path.split(x)[-1])[-1])
+
+    ionchamber_files.sort()
+    buffer_records.sort(key=key_func)
+    sample_records.sort(key=key_func)
+    buffer_ionchamber.sort(key=key_func)
+    sample_ionchamber.sort(key=key_func)
+
+    # ===== convert scattering image to scattering profile ========== #
     num_total_images = len(scatter_image_files)
-    num_processed = len(
-        glob.glob(os.path.join(raw_settings['ProcessedFilePath'], '*.dat')))
+    processed_files = sorted(
+        glob.glob1(raw_settings['ProcessedFilePath'], '*%s' % dat_ext))
+    num_processed = len(processed_files)
     num_unprocessed = num_total_images - num_processed
-    output = u"{} Find {} scattering images, processed {}, unprocessed {}. 'overwrite_processed={}`.".format(
+    output = u"{} Found {} scattering images, processed {}, unprocessed {}. 'overwrite_processed={}`.".format(
         now(), num_total_images, num_processed, num_unprocessed,
         overwirte_processed)
     print(output, file=log_file)
     if not overwirte_processed:
         unprocessed_files = remove_processed(scatter_image_files,
-                                             raw_settings['ProcessedFilePath'])
+                                             raw_settings['ProcessedFilePath'],
+                                             dat_ext)
     else:
         unprocessed_files = scatter_image_files
+    if processed_files:
+        print('  List of processed profiles:', file=log_file)
+        print('\n'.join(map(lambda x: '  %s' % x, processed_files)),
+              file=log_file)
     if unprocessed_files:
         raw_simulator.loadSASMs(unprocessed_files)
         for each in unprocessed_files:
@@ -284,6 +384,32 @@ def run_automatic(exp_config, log_file=sys.stdout):
                     fname, ext1=img_ext, ext2=dat_ext),
                 file=log_file)
     print(u'', file=log_file)
+
+    # ================ Show ionchamber intensity ==================== #
+    print(u"{} Found {} ionchamber files, ".format(now(), len(ionchamber_files)),
+          file=log_file)
+    if base_intensity is None:
+        print(u'  No base ionchamber intensity has been set. '
+            'The last ionchamber file will be used as base intensity.',
+            file=log_file)
+        if buffer_ionchamber:
+            base_intensity = get_mean_ionchamber(buffer_ionchamber[-1])
+        else:
+            print(u'  Error: no ionchamber file found.', file=log_file)
+            raise FileNotFoundError('At least one buffer ionchamber file is required while no base intensity provided.')
+
+    print(u'  Current base intensity: {}'.format(base_intensity), file=log_file)
+    print(u'  Display scaling factor for each record', file=log_file)
+    max_length = get_max_length(ionchamber_files)
+    print(u"  {:<{l}} {:>13} {:>14}".format('Filename', 'Ion Intensity', 'Scaling Factor', l=max_length + 1),
+          file=log_file)
+    for ion_file in ionchamber_files:
+        mean_intensity = get_mean_ionchamber(ion_file)
+        scale_factor = base_intensity / mean_intensity
+        output = u'  {:<{l}}: {:13.5e} {:14.5f}'.format(
+            strip_dir(ion_file), mean_intensity, scale_factor, l=max_length)
+        print(output, file=log_file)
+    print('', file=log_file)
 
     # Averaged Strategy
     # 1. by-window-size (average all buffer, then average each group by window-size)
@@ -295,125 +421,158 @@ def run_automatic(exp_config, log_file=sys.stdout):
 
     # Stage ?: Average processed profile
 
-    buffer_ionchamber, sample_ionchamber = split_buffer_sample(
-        ionchamber_files)
-    buffer_records, sample_records = split_buffer_sample(record_files)
-
-    # sort filename list with last integer (eg: ***_1.ext, ***_002.ext)
-    regpattern = re.compile(r'\d+')
-    key_func = lambda x: int(regpattern.findall(os.path.split(x)[-1])[-1])
-    buffer_records.sort(key=key_func)
-    sample_records.sort(key=key_func)
-    buffer_ionchamber.sort(key=key_func)
-    sample_ionchamber.sort(key=key_func)
-
-    ## Buffer
+    # ================== Buffer ===================================== #
     for i, (rec, ion) in enumerate(zip(buffer_records, buffer_ionchamber)):
         print(
             now(),
-            strip_dir(rec.decode('utf-8')),
-            strip_dir(ion.decode('utf-8')),
+            unicodify(strip_dir(rec)),
+            unicodify(strip_dir(ion)),
             file=log_file)
         _, _, _, filegroup = load_record(rec)
 
         mean_intensity = get_mean_ionchamber(ion)
-        scale_factor = intensity_base / mean_intensity
+        scale_factor = base_intensity / mean_intensity
 
-        proc_dat = convert_ext(filegroup, dat_ext, new_dir=raw_settings['ProcessedFilePath'])
+        proc_dat = convert_ext(
+            filegroup, dat_ext, new_dir=raw_settings['ProcessedFilePath'])
         loaded_sasms = raw_simulator.loadSASMs(proc_dat)
-        averaged_sasm = raw_simulator.averageSASMs(loaded_sasms[num_skip:])
-        print(u'  ' + averaged_sasm.getParameter('filename').decode('utf-8'), file=log_file)
-        # print(u'  averaged from ', u'  \n'.join(strip_dir(filegroup)), file=log_file)
-        print(u'', file=log_file)
-        # 如果有很多个 buffer 的记录，排序第一个的 buffer 将会被使用
-        if i == 0:
+        averaged_sasm = raw_simulator.averageSASMs(
+            loaded_sasms[buffer_num_skip:])
+
+        curr_filename = unicodify(averaged_sasm.getParameter('filename'))
+        print(gen_average_form(curr_filename, proc_dat), file=log_file)
+        # if multiple buffer records exist, the last record will be used as average buffer.
+        if i == len(buffer_records) - 1:
+            print(u'  *** this curve will be used as average buffer profile.',
+                file=log_file)
             averaged_buffer_sasm = averaged_sasm
 
-    ## 没有 buffer 的话，直接去 Averaged 里面找带 buffer 的第一个 .dat 文件
+    # 没有 buffer 的话，直接去 Averaged 里面找带 buffer 的第一个 .dat 文件
     if not buffer_records:
-        buffer_file = glob.glob(os.path.join(raw_settings['AveragedFilePath'], '*buffer*%s' % dat_ext))[0]
-        averaged_buffer_sasm = raw_simulator.loadSASMs([buffer_file])[0]
-
-        # 这个 buffer 的 intensity 要怎么处理
-        scale_factor = intensity_base / exp_config.get('buffer_ionchamber', intensity_base)
+        print(u'%s Warning: no buffer file in source data folder. Try to find first buffer from AveragedFilePath:' % now(),
+            file=log_file)
+        buffer_files = glob.glob(os.path.join(
+            raw_settings['AveragedFilePath'], '*buffer*%s' % dat_ext))
+        if not buffer_files:
+            print(u'  Error: no buffer profile in AveragedFilePath', file=log_file)
+            raise FileNotFoundError('No buffer profile in AveragedFilePath')
+        averaged_buffer_sasm = raw_simulator.loadSASMs([buffer_files[0]])[0]
+        curr_filename = unicodify(averaged_buffer_sasm.getParameter('filename'))
+        print(u'  Found {} as buffer profile'.format(curr_filename), file=log_file)
+        # 这个 buffer 的 intensity 要怎么处理?
+        buffer_ion_intensity = exp_config.get('buffer_ionchamber', None)
+        if buffer_ion_intensity is None:
+            print(u'  Loading buffer profile from average profile but no buffer ionchamber set in config',
+                file=log_file)
+            raise ValueError('Please set a ionchamber intensity for buffer.')
+        print(u'  Get buffer ionchamber from config -> buffer_ionchamber: {}'.format(buffer_ion_intensity),
+            file=log_file)
+        scale_factor = (base_intensity / buffer_ion_intensity)
+        print(u' scale buffer profile with base_intensity: {} *= {}'.format(curr_filename, scale_factor),
+            file=log_file)
         averaged_buffer_sasm.scale(scale_factor)
 
-    ## Sample
+    averaged_buffer_fname = unicodify(
+        averaged_buffer_sasm.getParameter('filename'))
+    print(u'', file=log_file)
+
+    # ================== Sample ===================================== #
     for rec, ion in zip(sample_records, sample_ionchamber):
         print(
             now(),
-            strip_dir(rec.decode('utf-8')),
-            strip_dir(ion.decode('utf-8')),
+            unicodify(strip_dir(rec)),
+            unicodify(strip_dir(ion)),
             file=log_file)
         _, _, _, filegroup = load_record(rec)
 
         mean_intensity = get_mean_ionchamber(ion)
-        scale_factor = intensity_base / mean_intensity
+        scale_factor = base_intensity / mean_intensity
 
-        proc_dat = convert_ext(filegroup, dat_ext, new_dir=raw_settings['ProcessedFilePath'])
+        proc_dat = convert_ext(
+            filegroup, dat_ext, new_dir=raw_settings['ProcessedFilePath'])
         loaded_sasms = raw_simulator.loadSASMs(proc_dat)
+
         if exp_config['window_size'] != 1:
             averaged_sasm = raw_simulator.averageSASMs(loaded_sasms[num_skip:])
+            averaged_fname = unicodify(averaged_sasm.getParameter('filename'))
+            print(gen_average_form(averaged_fname, proc_dat), file=log_file)
+
             averaged_sasm.scale(scale_factor)
-            print(u'  ' + averaged_sasm.getParameter('filename').decode('utf-8'), file=log_file)
-            # print(u'  averaged from ', u'  \n'.join(strip_dir(filegroup)), file=log_file)
+            print(u'  Scale profile: {} *= {}'.format(averaged_fname, scale_factor),
+                  file=log_file)
 
-            subtracted_sasm = raw_simulator.subtractSASMs(averaged_buffer_sasm, [averaged_sasm])[0]
-            print(u'  ' + subtracted_sasm.getParameter('filename').decode('utf-8'), file=log_file)
+            subtracted_sasm = raw_simulator.subtractSASMs(
+                averaged_buffer_sasm, [averaged_sasm])[0]
+            subtracted_fname = unicodify(
+                subtracted_sasm.getParameter('filename'))
+            print(u'  Subtract: {} = {} - {}'.format(subtracted_fname, averaged_fname, averaged_fname),
+                  file=log_file)
             print(u'', file=log_file)
-        else:
-            subtracted_sasms = raw_simulator.subtractSASMs(averaged_buffer_sasm, loaded_sasms)
-
-    max_length = get_max_length(ionchamber_files)
-    for ion_file in ionchamber_files:
-        mean_intensity = get_mean_ionchamber(ion_file)
-        scale_factor = intensity_base / mean_intensity
-        output = u'{:<{l}}: {} {}'.format(
-            strip_dir(ion_file), mean_intensity, scale_factor, l=max_length)
-        print(output, file=log_file)
-
+        else:  # window_size == 1
+            raw_simulator.scaleSASMs(
+                loaded_sasms, [scale_factor] * len(loaded_sasms))
+            print(u'  Scale all loaded profiles by scaling_factor:', scale_factor,
+                  file=log_file)
+            print(u'  Then do', file=log_file)
+            subtracted_sasms = raw_simulator.subtractSASMs(
+                averaged_buffer_sasm, loaded_sasms)
+            for sub_sasm, sasm in zip(subtracted_sasms, loaded_sasms):
+                print(u'  Subtract: {} = {} - {}'.format(
+                    unicodify(strip_dir(sub_sasm.getParameter('filename'))),
+                    unicodify(strip_dir(sasm.getParameter('filename'))),
+                    unicodify(strip_dir(averaged_buffer_fname)),
+                ), file=log_file)
     # print(u'Summary:', file=log_file)
     # print(u'Number of source data', file=log_file)
 
 
 def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("config_file", help="Defined configuration.")
+    parser.add_argument('...', nargs=argparse.REMAINDER, help='Other supplementary arguments in --key=val format')
+    args = parser.parse_args()
 
-    config_file = os.path.realpath(sys.argv[1])
+    config_file = args.config_file
+    rest_args = getattr(args, '...')
+    rest_config = parse_args(rest_args)
+
+    # load configuration from config file.
     with open(config_file, 'r', encoding='utf-8') as fstream:
         exp_config = yaml.load(fstream)
 
+    # print configuration from config file.
+    cf_info = u'{} Current configuration from file\n'.format(now())
+    max_length = get_max_length(exp_config.keys())
+    for key, val in iteritems(exp_config):
+        cf_info += u'  {:<{l}}: {}\n'.format(key, val, l=max_length)
+    cf_info += '\n'
+
     # overwrite with input argument
+    appending_info = u'{} Appended arguments from command line:\n'.format(now())
+    if rest_config:
+        max_length = get_max_length(rest_config.keys())
+        for key, val in iteritems(rest_config):
+            appending_info += u'  {:<{l}}: {}\n'.format(key, val, l=max_length)
+    appending_info += u'\n'
+    exp_config.update(rest_config)
 
     # check essential arguments
-    if exp_config.get('exp_root_path', None) is None:
-        exp_config['exp_root_path'] = os.path.dirname(config_file)
-        print(exp_config['exp_root_path'])
-    if exp_config.get('raw_cfg_path', None) is None:
-        raise ValueError('please specify a cfg file.')
+    # Though `exp_config` isn't in return, this will modify its content/value.
+    check_info = check_essential_arguments(exp_config, config_file)
 
-    # processing_summary.txt
-    summary_file = os.path.join(exp_config['exp_root_path'], 'summary.txt')
+    # processing_summary.log
+    summary_file = os.path.join(
+        exp_config['exp_root_path'], 'summary_{}.log'.format(now_under_score()))
     with open(summary_file, 'w', encoding='utf-8') as summary:
-        # print configuration from config file.
-        print(
-            u'{} Current configuration from file'.format(now()), file=summary)
-        max_length = get_max_length(exp_config.keys())
-        for key, val in iteritems(exp_config):
-            print(
-                u'  {:<{l}}: {}'.format(key, val, l=max_length), file=summary)
-        print(u'', file=summary)
-        print(
-            u'{} Appended arguments from command line:'.format(now()),
-            file=summary)
-        print(u'', file=summary)
-        print(
-            u'{} Check and set default value for missing arguments:'.format(
-                now()),
-            file=summary)
-        print(u'', file=summary)
-        run_automatic(exp_config, summary)
+        summary = open(summary_file, 'w', encoding='utf-8')
 
-    # run_RAW(exp_config)
+        # write log
+        summary.write(cf_info)
+        summary.write(appending_info)
+        summary.write(check_info)
+
+        # run scripts
+        run_automatic(exp_config, summary)
 
 
 if __name__ == '__main__':

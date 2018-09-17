@@ -787,8 +787,8 @@ def parseSAXSLAB300Header(tag_with_data):
     try:
       (d['pixelsize_x'],d['pixelsize_y']) = d['det_pixel_size'].split()
       #unit conversions
-      d['pixelsize_x'] = float(d['pixelsize_x']) * 1e6;
-      d['pixelsize_y'] = float(d['pixelsize_y']) * 1e6;
+      d['pixelsize_x'] = float(d['pixelsize_x']) * 1e6
+      d['pixelsize_y'] = float(d['pixelsize_y']) * 1e6
     except KeyError: pass
 
     # conversion all possible values to numbers
@@ -1534,7 +1534,7 @@ def loadFile(filename, raw_settings, no_processing = False):
     '''
     try:
         file_type = checkFileType(filename)
-        print(file_type)
+        # print(file_type)
     except IOError:
         raise
     except Exception as msg:
