@@ -134,7 +134,6 @@ class RAWSimulator():
         None
         """
         print(u'Please wait while aligning and plotting...', file=self._stdout)
-
         if marked_sasm is None:
             self.error_printer.showPleaseMarkItemError('align')
             return None
@@ -186,7 +185,6 @@ class RAWSimulator():
         None
         """
         print(u'Please wait while aligning and plotting...', file=self._stdout)
-
         if not selected_sasms:
             self.error_printer.showPleaseSelectItemsError('scale')
             return None
@@ -359,8 +357,7 @@ class RAWSimulator():
         -------
         subtracted_list : list of SASM object
         """
-        print(
-            'Please wait while subtracting and plotting...', file=self._stdout)
+        print(u'Please wait while subtracting and plotting...', file=self._stdout)
         do_auto_save = self._raw_settings.get('AutoSaveOnSub')
 
         if marked_sasm in selected_sasms:
@@ -392,6 +389,7 @@ class RAWSimulator():
                 subtracted_sasm = SASM.subtract(
                     sasm, sub_sasm, forced=yes_to_all)
                 self.insertSasmFilenamePrefix(subtracted_sasm, 'S_')
+                print(subtracted_sasm.getParameter('filename'))
                 subtracted_list.append(subtracted_sasm)
 
                 if do_auto_save:
@@ -433,8 +431,7 @@ class RAWSimulator():
         average_sasm : SASM object
             Return average sasm.
         """
-        print(
-            u'Please wait while averaging and plotting...', file=self._stdout)
+        print(u'Please wait while averaging and plotting...', file=self._stdout)
         do_auto_save = self._raw_settings.get('AutoSaveOnAvgFiles')
 
         if len(selected_sasms) < 2:
@@ -482,8 +479,7 @@ class RAWSimulator():
         average_sasm : SASM object
             Return average sasm.
         """
-        print(
-            u'Please wait while averaging and plotting...', file=self._stdout)
+        print(u'Please wait while averaging and plotting...', file=self._stdout)
         do_auto_save = self._raw_settings.get('AutoSaveOnAvgFiles')
 
         if len(selected_sasms) < 2:
