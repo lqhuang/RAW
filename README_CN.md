@@ -36,7 +36,7 @@ Get tired of trivial GUI operations? Try these scripts to make life easier.
 
     less /path/of/run-root-directory/summary_timestamp.log
 
-可以从命令行中补充特定的参数，并将*覆盖*配置文件中的参数，例如:
+可以从命令行中补充特定的参数，并将**覆盖**配置文件中的参数，例如:
 
     python raw_script.py /path/to/config.yml --raw_cfg_path=/path/to/raw_settings.cfg --window_size=1
 
