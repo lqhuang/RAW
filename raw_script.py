@@ -136,10 +136,10 @@ def check_essential_arguments(exp_config, config_file):
         'skip_frames': 1,
         'buffer_skip_frames': 1,
         'SourceFilePath': 'Data',
-        'ProcessedFilePath':'Processed',
-        'AveragedFilePath':'Averaged',
-        'SubtractedFilePath':'Subtracted',
-        'GnomFilePath':'GNOM',
+        'ProcessedFilePath': 'Processed',
+        'AveragedFilePath': 'Averaged',
+        'SubtractedFilePath': 'Subtracted',
+        'GnomFilePath': 'GNOM',
         'img_ext': '.tif',
         'dat_ext': '.dat',
         'ionchamber_ext': '.Iochamber',
@@ -395,6 +395,9 @@ def run_automatic(exp_config, log_file=sys.stdout):
         if buffer_ionchamber:
             base_intensity = get_mean_ionchamber(buffer_ionchamber[-1])
         else:
+            if exp_config.get('buffer_ionchamber', None) is None:
+                print(u'  Error: `buffer_ionchamber` argument is missing.', file=log_file)
+                raise ValueError('`buffer_ionchamber` argument is missing.')
             print(u'  Error: no ionchamber file found.', file=log_file)
             raise FileNotFoundError('At least one buffer ionchamber file is required while no base intensity provided.')
 
