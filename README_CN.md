@@ -4,6 +4,31 @@ Get tired of trivial GUI operations? Try these scripts to make life easier.
 
 [English](./README.md), 中文简介
 
+## 环境依赖
+
+可运行的最小依赖 (PY2/PY3):
+
+    pip install numpy scipy pillow six pyyaml
+
+通过 c++ 扩展(需编译)加快散射图像到 1D 曲线的计算，仅在 Python 2 + Linux/macOS 环境下可用:
+
+    pip install weave
+
+支持更多更全的散射图像格式:
+
+    pip install pyfai fabio
+
+快速安装:
+
+    pip install -r requirements.txt
+    # or
+    conda install --file requirements.txt
+
+conda env:
+
+    conda create -n raw --file requirement.txt
+    source activate raw
+
 ## 使用指南
 
 适用于在 `SSRF` 采集的实验数据
@@ -14,8 +39,9 @@ Get tired of trivial GUI operations? Try these scripts to make life easier.
 
     python raw_script.py --help
 
-首先需要确定出单次实验的根目录，并在根目录中创造 `config.yml` 配置文件（不放在根目录也可以，但需在配置文件中指明根目录的位置），同时指定脚本所需要的参数，示例：
+首先需要确定出单次实验的根目录，并在根目录中创造 `config.yml` 配置文件(不放在根目录也可以，但需在配置文件中指明根目录的位置)，同时指定脚本所需要的参数，示例：
 
+    # exp_root_path: 'blabla/SSRF-MagR-201805/Analysis/EXP41'
     raw_cfg_path: 'blabla/SSRF-MagR-201805/cfg/20180503-recentering-remasking.cfg'
 
     # Relative path to root directory
@@ -36,11 +62,15 @@ Get tired of trivial GUI operations? Try these scripts to make life easier.
 
     less /path/of/run-root-directory/summary_timestamp.log
 
-可以从命令行中补充特定的参数，并将**覆盖**配置文件中的参数，例如:
+可以从命令行中补充特定的参数，并将**替代**配置文件中的参数，但不会写入到配置文件中，例如:
 
     python raw_script.py /path/to/config.yml --raw_cfg_path=/path/to/raw_settings.cfg --window_size=1
 
-但注意，目前暂时只允许 `--key=arg` 的方式进行解析
+若需要将命令行补充的参数写入到配置文件中，可以通过 `--write_to_file` 的参数实现(由于 `pyyaml` 的实现原因，重新写入后会丢失掉文件中的所有注释型内容):
+
+    python raw_script.py --write_to_file /path/to/config.yml --raw_cfg_path=/path/to/raw_settings.cfg --window_size=1
+
+暂时只允许以 `--key=arg` 的方式进行解析。
 
 如果没有在 `.yml/.yaml` 中配置或命令行中指明，部分参数将默认补全，以下为列表:
 
@@ -61,11 +91,8 @@ Get tired of trivial GUI operations? Try these scripts to make life easier.
 其他参数:
 
     raw_cfg_path      : /path/to/raw_settings.cfg (必要，缺少将报错)
-
     window_size       : 1  # 窗口大小，目前只有 `1` 和 `unset` 的两种。为 `1` 时不针对 `ionchamber records` 文件进行平均，而是把每次曝光记录单独处理。不设置(也就是不设为 `1` 时将根据 `ionchamber` 记录自动决定窗口大小，自动平均)。Buffer 不受这个选项控制。
-
     base_intensity    : 提供一个参考的 `ionchamber_intensity`，将所有的 Profile 缩放到这个光强上以提高可对比性。若放空的情况下将默认使用该次实验中的 buffer ionchamber 作为参考。(eg: 7e-10)
-
     buffer_ionchamber : 在部分情况下 `SourceFilePath` 中没有任何的 `buffer` 文件，脚本将自动从 `AveragedFilePath` 中寻找已有的 buffer profile，但由于没有 ionchamber 文件来说明该 buffer 的强度，因此从参数中提供该 buffer 的强度。
 
 这些参数均可以修改，但不会自动添加默认值。
@@ -95,7 +122,7 @@ Get tired of trivial GUI operations? Try these scripts to make life easier.
     beads_14_1_00004.tif
     beads_14_1_00005.tif
 
-### 模式一：通过 log 文件自动 scale
+### 模式一：通过 log record 文件 Average, Scale and Subtract
 
 `ionchamber` 文件记录了本次曝光整个过程中光强的变化，`.log` 文件，示例:
 
@@ -119,8 +146,8 @@ Get tired of trivial GUI operations? Try these scripts to make life easier.
 在这个模式下，鉴于 `ionchamber` 是连续的，没有单独的记录，是先将组内的数据先平均，再对平均数据进行 `scale` 操作，最后减去 buffer，伪代码：
 
     scale_factor = current_ionchamber / first_group_ionchamber
-    average_profile = radial_average(group_profiles) * scale_factor
-    subtract_profile = average_profile - buffer_profile
+    averaged_profile = radial_average(group_profiles) * scale_factor
+    subtractd_profile = averaged_profile - buffer_profile
 
 ### 模式二：通过统计方式进行尾部对齐
 
@@ -129,5 +156,5 @@ Get tired of trivial GUI operations? Try these scripts to make life easier.
 
 ## 暂时处理不了的情形 (TODO)
 
-1. 一个组内如果有一帧异常，不想加到 average 的范围内，暂时没有很好的办法去处理。(可能解决方法，加一个 `masked_profile` 的参数， 每次做 average 的时候去检查包不包含不想要的组)
-2. 可以添加一个 `Option` 来输出中间过程。(用图画出平均前的 Profile 和平均后的 Profile)
+1. 一个组内如果有一帧异常，不想加到 average 的范围内，暂时没有很好的办法去处理。(可能的解决方法：加一个 `masked_profile` 的参数，每次做 average 的时候去检查包不包含不想要的内容)
+2. 可以添加一个 `Option` 来输出中间过程。(用图画出平均前的 Profiles 和平均后的 Profile，比较方便 debug)
