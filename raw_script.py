@@ -16,12 +16,13 @@ from six import iteritems, string_types
 from RAW import RAWSimulator
 from fileio import get_mean_ionchamber, load_record
 
+PY2 = sys.version_info < (3, 0)
 
 def unicodify(text):
-    if isinstance(text, str):
-        return text
-    elif isinstance(text, bytes):
+    if PY2 and isinstance(text, (bytes, str)):
         return text.decode('utf-8')
+    else:
+        return text
 
 
 def remove_processed(data_list, processed_path, target_ext='.dat'):
@@ -51,8 +52,12 @@ def parse_args(args):
     # args (list):
     args_dict = {}
     for item in args:
-        key, arg = item.strip('-').split('=')
-        args_dict[key] = arg
+        try:
+            key, arg = unicodify(item).strip('-').split('=')
+            args_dict[key] = arg
+        except ValueError:
+            # ValueError: not enough values to unpack (expected 2, got 1)
+            raise ValueError('Error: Unrecognized argument {}. Please retry with --key=val format.'.format(item))
     return args_dict
 
 
@@ -160,6 +165,7 @@ def check_essential_arguments(exp_config, config_file):
 
     check_info += '\n'
     return check_info
+
 
 def run_RAW(exp_config):
     """Old version"""
@@ -366,15 +372,14 @@ def run_automatic(exp_config, log_file=sys.stdout):
         overwirte_processed)
     print(output, file=log_file)
     if not overwirte_processed:
-        unprocessed_files = remove_processed(scatter_image_files,
-                                             raw_settings['ProcessedFilePath'],
-                                             dat_ext)
+        unprocessed_files = remove_processed(
+            scatter_image_files, raw_settings['ProcessedFilePath'], dat_ext)
     else:
         unprocessed_files = scatter_image_files
     if processed_files:
         print('  List of processed profiles:', file=log_file)
         print('\n'.join(map(lambda x: '  %s' % x, processed_files)),
-              file=log_file)
+            file=log_file)
     if unprocessed_files:
         raw_simulator.loadSASMs(unprocessed_files)
         for each in unprocessed_files:
@@ -387,7 +392,7 @@ def run_automatic(exp_config, log_file=sys.stdout):
 
     # ================ Show ionchamber intensity ==================== #
     print(u"{} Found {} ionchamber files, ".format(now(), len(ionchamber_files)),
-          file=log_file)
+        file=log_file)
     if base_intensity is None:
         print(u'  No base ionchamber intensity has been set. '
             'The last ionchamber file will be used as base intensity.',
@@ -399,13 +404,15 @@ def run_automatic(exp_config, log_file=sys.stdout):
                 print(u'  Error: `buffer_ionchamber` argument is missing.', file=log_file)
                 raise ValueError('`buffer_ionchamber` argument is missing.')
             print(u'  Error: no ionchamber file found.', file=log_file)
-            raise FileNotFoundError('At least one buffer ionchamber file is required while no base intensity provided.')
+            raise FileNotFoundError(
+                'At least one buffer ionchamber file is required while no base intensity provided.'
+            )
 
     print(u'  Current base intensity: {}'.format(base_intensity), file=log_file)
     print(u'  Display scaling factor for each record', file=log_file)
     max_length = get_max_length(ionchamber_files)
-    print(u"  {:<{l}} {:>13} {:>14}".format('Filename', 'Ion Intensity', 'Scaling Factor', l=max_length + 1),
-          file=log_file)
+    print(u'  {:<{l}} {:>13} {:>14}'.format('Filename', 'Ion Intensity', 'Scaling Factor', l=max_length + 1),
+        file=log_file)
     for ion_file in ionchamber_files:
         mean_intensity = get_mean_ionchamber(ion_file)
         scale_factor = base_intensity / mean_intensity
@@ -531,13 +538,23 @@ def run_automatic(exp_config, log_file=sys.stdout):
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("config_file", help="Defined configuration.")
-    parser.add_argument('...', nargs=argparse.REMAINDER, help='Other supplementary arguments in --key=val format')
+    parser.add_argument('config_file', help="Defined configuration.")
+    parser.add_argument('--write_to_file', action='store_true', help='Write appended arguments to configuration file.')
+    parser.add_argument('...', nargs=argparse.REMAINDER, help='Other supplementary arguments in --key=val format.')
     args = parser.parse_args()
 
     config_file = args.config_file
+    write_to_file = args.write_to_file
     rest_args = getattr(args, '...')
+    # Arguments in this two positions are different.
+    # python raw_script.py .\config.yml --write_to_file
+    # python raw_script.py --write_to_file .\config.yml
+    if '--write_to_file' in rest_args:
+        write_to_file = True
+        rest_args.remove('--write_to_file')
     rest_config = parse_args(rest_args)
+    if 'write_to_file' in rest_config:
+        rest_config.pop('write_to_file')
 
     # load configuration from config file.
     with open(config_file, 'r', encoding='utf-8') as fstream:
@@ -558,6 +575,9 @@ def main():
             appending_info += u'  {:<{l}}: {}\n'.format(key, val, l=max_length)
     appending_info += u'\n'
     exp_config.update(rest_config)
+    if rest_config and write_to_file:
+        with open(config_file, 'w', encoding='utf-8') as fstream:
+            yaml.dump(exp_config, fstream)
 
     # check essential arguments
     # Though `exp_config` isn't in return, this will modify its content/value.

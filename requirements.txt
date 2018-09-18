@@ -1,0 +1,6 @@
+numpy
+Pillow
+PyYAML
+# ruamel.yaml
+scipy
+six
