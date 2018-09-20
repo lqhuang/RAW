@@ -10,6 +10,7 @@ if RAW_DIR not in sys.path:
 from .RAWWrapper import RAWSimulator
 from .RAWAnalysisWrapper import RAWAnalysisSimulator
 from . import SASM
+from . import RAWSettings
 
 # TODO: Fix absolute import between python 2/3 and pickle
 

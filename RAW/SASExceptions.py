@@ -23,7 +23,8 @@ Created on Aug 2, 2010
 '''
 import sys
 
-if sys.version_info < (3, 0):
+if sys.version_info < (3, 6):
+    # ModuleNotFoundError was added in Python 3.6
     class ModuleNotFoundError(Exception):
         def __init__(self, value):
            self.parameter = value

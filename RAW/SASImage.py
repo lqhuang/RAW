@@ -34,13 +34,10 @@ if RAW_DIR not in sys.path:
 import SASExceptions, SASParser, SASCalib, SASM, RAWGlobals
 import polygonMasking as polymask
 
-if RAWGlobals.isPY2:
-    from SASExceptions import ModuleNotFoundError
-
 try:
     import pyFAI
     RAWGlobals.usepyFAI = True
-except (ImportError, ModuleNotFoundError):
+except Exception:
     RAWGlobals.usepyFAI = False
 
 # If C extensions have not been built, build them:

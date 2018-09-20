@@ -26,7 +26,7 @@ from __future__ import print_function, division
 # import wx, cPickle, copy, os
 try:
     import cPickle as pickle  # python 2
-except ModuleNotFoundError:
+except Exception:
     import pickle  # python 3
 import os, sys, copy
 

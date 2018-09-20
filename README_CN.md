@@ -33,7 +33,17 @@ conda env:
 
 适用于在 `SSRF` 采集的实验数据
 
-### 自动脚本
+### raw_cfg_printer 输出 raw_cfg 配置
+
+美观地输出 `raw_settings.cfg` 的各项配置内容
+
+    python raw_cfg_printer.py /path/to/raw_settings.cfg
+
+重定向到 `raw_cfg.log` 文件中
+
+    python raw_cfg_printer.py /path/to/raw_settings.cfg > raw_cfg.log
+
+### raw_script 自动脚本
 
 查看帮助
 

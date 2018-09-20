@@ -31,13 +31,11 @@ RAW_DIR = os.path.dirname(os.path.abspath(__file__))
 if RAW_DIR not in sys.path:
     sys.path.append(RAW_DIR)
 import RAWGlobals
-if RAWGlobals.isPY2:
-    from SASExceptions import ModuleNotFoundError
 
 try:
     import pyFAI, pyFAI.geometryRefinement
     RAWGlobals.usepyFAI = True
-except (ImportError, ModuleNotFoundError):
+except Exception:
     RAWGlobals.usepyFAI = False
 
 def calcAbsScaleConstWater(water_sasm, start_idx, end_idx):
