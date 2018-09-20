@@ -32,7 +32,7 @@ from __future__ import print_function, division
 import os, sys, time, subprocess, scipy.optimize, threading, platform
 try:
     import Queue as queue  # python 2
-except ModuleNotFoundError:
+except Exception:
     import queue  # python 3
 
 import numpy as np

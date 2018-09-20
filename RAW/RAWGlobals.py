@@ -18,7 +18,7 @@
 
 # try:
 #     import Queue as queue  # python 2
-# except (ImportError, ModuleNotFoundError):
+# except Exception:
 #     import queue  # python 3
 import sys
 import os
@@ -26,14 +26,14 @@ import os
 
 if sys.version_info < (3, 0):
     isPY2 = True
-    from SASExceptions import ModuleNotFoundError
+    # from SASExceptions import ModuleNotFoundError
     try:
         try:
             import weave
-        except (ImportError, ModuleNotFoundError):
+        except Exception:
             import scipy.weave as weave
         compiled_extensions = True
-    except (ImportError, ModuleNotFoundError):
+    except Exception:
         compiled_extensions = False
 else:
     isPY2 = False
