@@ -31,6 +31,18 @@ Quick install:
 
 ## How to use?
 
+### raw_cfg_printer
+
+Prettily print each configuration in `raw_settings.cfg`:
+
+    python raw_cfg_printer.py /path/to/raw_settings.cfg
+
+Redirect output to file `raw_cfg.log`:
+
+    python raw_cfg_printer.py /path/to/raw_settings.cfg > raw_cfg.log
+
+### raw_script
+
 Still writing ...... (Please see chinese version for more information.)
 
 Run script:
