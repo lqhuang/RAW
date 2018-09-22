@@ -132,7 +132,7 @@ conda env:
     beads_14_1_00004.tif
     beads_14_1_00005.tif
 
-### 模式一：通过 log record 文件 Average, Scale and Subtract
+### 模式一 (scale = 'ionchamber')：通过 log record 文件 Average, Scale and Subtract
 
 `ionchamber` 文件记录了本次曝光整个过程中光强的变化，`.log` 文件，示例:
 
@@ -159,10 +159,12 @@ conda env:
     averaged_profile = radial_average(group_profiles) * scale_factor
     subtractd_profile = averaged_profile - buffer_profile
 
-### 模式二：通过统计方式进行尾部对齐
+### 模式二 (scale = 'background') ：通过统计背景强度方式进行尾部对齐
 
 通过算术平均的方式针对特定的 `q` 范围进行计算，得到缩放系数 (scaling factor)。
-(由于经过大幅度修改，本部分代码暂时未测试完成，见 raw_script.py -> func: run_RAW())
+
+在 `config.yml` 中设定 `scale: background`，将通过散射背景强度进行对齐 (align)，指定 `scale: background` 时最好也指定 `window_size`, `scale_qmin` 和 `scale_qmin` 的参数。未设定这些参数将默认设为 `winddow_size: 5`, `scale_qmin: 0.23`, `scale_qmax: 0.26`。
+
 
 ## 暂时处理不了的情形 (TODO)
 

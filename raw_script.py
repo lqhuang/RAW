@@ -150,6 +150,7 @@ def check_essential_arguments(exp_config, config_file):
         'ionchamber_ext': '.Iochamber',
         'record_ext': '.log',
         'overwrite': False,
+        'scale': 'ionchamber',
     }
     existent_args = exp_config.keys()
 
@@ -162,6 +163,19 @@ def check_essential_arguments(exp_config, config_file):
     for key in missing_args:
         val = exp_config[key]
         check_info += u'  {:<{l}}: {}\n'.format(key, val, l=max_length)
+
+    # check scale_qmin, scale_qmax
+    if ('scale' in exp_config and exp_config['scale'] == 'background') or \
+       ('scale' in missing_args):
+        if 'scale_qmin' not in exp_config:
+            exp_config['scale_qmin'] = 0.23
+            check_info += u'  {:<{l}}: {}\n'.format('scale_qmin', 0.23, l=max_length)
+        if 'scale_qmax' not in exp_config:
+            exp_config['scale_qmax'] = 0.26
+            check_info += u'  {:<{l}}: {}\n'.format('scale_qmax', 0.26, l=max_length)
+        if 'window_size' not in exp_config:
+            exp_config['window_size'] = 5
+            check_info += u'  {:<{l}}: {}\n'.format('window_size', 5, l=max_length)
 
     check_info += '\n'
     return check_info
@@ -328,6 +342,8 @@ def run_automatic(exp_config, log_file=sys.stdout):
 
     base_intensity = exp_config.get('base_ionchamber', None)
 
+    alignment = exp_config.get('scale', None)
+
     raw_simulator = RAWSimulator(
         raw_cfg_path,
         # exp_config['log_file'],
@@ -486,52 +502,87 @@ def run_automatic(exp_config, log_file=sys.stdout):
         averaged_buffer_sasm.getParameter('filename'))
     print(u'', file=log_file)
 
-    # ================== Sample ===================================== #
-    for rec, ion in zip(sample_records, sample_ionchamber):
-        print(
-            now(),
-            unicodify(strip_dir(rec)),
-            unicodify(strip_dir(ion)),
-            file=log_file)
-        _, _, _, filegroup = load_record(rec)
+    if alignment == 'ionchamber' or alignment is None:
+        # ================== Sample ===================================== #
+        for rec, ion in zip(sample_records, sample_ionchamber):
+            print(
+                now(),
+                unicodify(strip_dir(rec)),
+                unicodify(strip_dir(ion)),
+                file=log_file)
+            _, _, _, filegroup = load_record(rec)
 
-        mean_intensity = get_mean_ionchamber(ion)
-        scale_factor = base_intensity / mean_intensity
+            mean_intensity = get_mean_ionchamber(ion)
+            scale_factor = base_intensity / mean_intensity
 
-        proc_dat = convert_ext(
-            filegroup, dat_ext, new_dir=raw_settings['ProcessedFilePath'])
-        loaded_sasms = raw_simulator.loadSASMs(proc_dat)
+            proc_dat = convert_ext(
+                filegroup, dat_ext, new_dir=raw_settings['ProcessedFilePath'])
+            loaded_sasms = raw_simulator.loadSASMs(proc_dat)
 
-        if exp_config['window_size'] != 1:
-            averaged_sasm = raw_simulator.averageSASMs(loaded_sasms[num_skip:])
-            averaged_fname = unicodify(averaged_sasm.getParameter('filename'))
-            print(gen_average_form(averaged_fname, proc_dat), file=log_file)
+            if exp_config['window_size'] != 1:
+                averaged_sasm = raw_simulator.averageSASMs(loaded_sasms[num_skip:])
+                averaged_fname = unicodify(averaged_sasm.getParameter('filename'))
+                print(gen_average_form(averaged_fname, proc_dat), file=log_file)
 
-            averaged_sasm.scale(scale_factor)
-            print(u'  Scale profile: {} *= {}'.format(averaged_fname, scale_factor),
-                  file=log_file)
+                averaged_sasm.scale(scale_factor)
+                print(u'  Scale profile: {} *= {}'.format(averaged_fname, scale_factor),
+                    file=log_file)
 
-            subtracted_sasm = raw_simulator.subtractSASMs(
-                averaged_buffer_sasm, [averaged_sasm])[0]
-            subtracted_fname = unicodify(
-                subtracted_sasm.getParameter('filename'))
-            print(u'  Subtract: {} = {} - {}'.format(subtracted_fname, averaged_fname, averaged_fname),
-                  file=log_file)
-            print(u'', file=log_file)
-        else:  # window_size == 1
-            raw_simulator.scaleSASMs(
-                loaded_sasms, [scale_factor] * len(loaded_sasms))
-            print(u'  Scale all loaded profiles by scaling_factor:', scale_factor,
-                  file=log_file)
-            print(u'  Then do', file=log_file)
-            subtracted_sasms = raw_simulator.subtractSASMs(
-                averaged_buffer_sasm, loaded_sasms)
-            for sub_sasm, sasm in zip(subtracted_sasms, loaded_sasms):
-                print(u'  Subtract: {} = {} - {}'.format(
-                    unicodify(strip_dir(sub_sasm.getParameter('filename'))),
-                    unicodify(strip_dir(sasm.getParameter('filename'))),
-                    unicodify(strip_dir(averaged_buffer_fname)),
-                ), file=log_file)
+                subtracted_sasm = raw_simulator.subtractSASMs(
+                    averaged_buffer_sasm, [averaged_sasm])[0]
+                subtracted_fname = unicodify(
+                    subtracted_sasm.getParameter('filename'))
+                print(u'  Subtract: {} = {} - {}'.format(subtracted_fname, averaged_fname, averaged_fname),
+                    file=log_file)
+                print(u'', file=log_file)
+            else:  # window_size == 1
+                raw_simulator.scaleSASMs(
+                    loaded_sasms, [scale_factor] * len(loaded_sasms))
+                print(u'  Scale all loaded profiles by scaling_factor:', scale_factor,
+                    file=log_file)
+                print(u'  Then do', file=log_file)
+                subtracted_sasms = raw_simulator.subtractSASMs(
+                    averaged_buffer_sasm, loaded_sasms)
+                for sub_sasm, sasm in zip(subtracted_sasms, loaded_sasms):
+                    print(u'  Subtract: {} = {} - {}'.format(
+                        unicodify(strip_dir(sub_sasm.getParameter('filename'))),
+                        unicodify(strip_dir(sasm.getParameter('filename'))),
+                        unicodify(strip_dir(averaged_buffer_fname)),
+                    ), file=log_file)
+
+    elif alignment == 'background':
+        scale_qmin = exp_config['scale_qmin']
+        scale_qmax = exp_config['scale_qmax']
+        window_size = exp_config['window_size']
+
+        file_pattern = os.path.join(raw_settings['ProcessedFilePath'], '*%s' % dat_ext)
+        processed_files_list = sorted(glob.glob(file_pattern))
+        source_frames = raw_simulator.loadSASMs(processed_files_list)
+
+        sample_frames = []
+
+        for each_sasm in source_frames:
+            filename = each_sasm.getParameter('filename')
+            if 'buffer' not in filename:
+                sample_frames.append(each_sasm)
+
+        raw_simulator.alignSASMs(sample_frames[num_skip], sample_frames, (scale_qmin, scale_qmax))
+
+        if window_size > 1:
+            sample_frames_by_group = [
+                sample_frames[i:i + window_size]
+                for i in range(0, len(sample_frames), window_size)
+            ]
+            average_sasm_list = [
+                raw_simulator.averageSASMs(per_group[num_skip:])
+                for per_group in sample_frames_by_group
+            ]
+        else:
+            average_sasm_list = sample_frames
+
+        subtracted_sasm_list = raw_simulator.subtractSASMs(
+            averaged_buffer_sasm, average_sasm_list)
+
     # print(u'Summary:', file=log_file)
     # print(u'Number of source data', file=log_file)
 
