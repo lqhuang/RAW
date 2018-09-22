@@ -165,7 +165,6 @@ conda env:
 
 在 `config.yml` 中设定 `scale: background`，将通过散射背景强度进行对齐 (align)，指定 `scale: background` 时最好也指定 `window_size`, `scale_qmin` 和 `scale_qmin` 的参数。未设定这些参数将默认设为 `winddow_size: 5`, `scale_qmin: 0.23`, `scale_qmax: 0.26`。
 
-
 ## 暂时处理不了的情形 (TODO)
 
 1. 一个组内如果有一帧异常，不想加到 average 的范围内，暂时没有很好的办法去处理。(可能的解决方法：加一个 `masked_profile` 的参数，每次做 average 的时候去检查包不包含不想要的内容)
